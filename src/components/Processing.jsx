@@ -10,6 +10,15 @@ const MESSAGES = [
   '¡Casi listo!',
 ]
 
+// Chips that appear sequentially as progress advances
+// Each chip appears when msgIndex >= threshold
+const PROGRESS_CHIPS = [
+  { label: 'Análisis ✓',        threshold: 1, color: 'var(--primary-light)', bg: 'var(--primary-dim)',  border: 'rgba(139,92,246,0.3)' },
+  { label: 'Flashcards ✓',      threshold: 2, color: 'var(--teal)',          bg: 'var(--teal-dim)',     border: 'rgba(34,211,238,0.3)'  },
+  { label: 'Preguntas ✓',       threshold: 3, color: 'var(--pink-light)',    bg: 'var(--pink-dim)',     border: 'rgba(244,63,94,0.25)'  },
+  { label: 'FSRS calibrado ✓',  threshold: 4, color: 'var(--accent)',        bg: 'var(--accent-dim)',   border: 'rgba(251,191,36,0.3)'  },
+]
+
 export default function Processing({ source, onComplete, onError }) {
   const [msgIndex, setMsgIndex] = useState(0)
   const [dots, setDots] = useState('.')
@@ -90,10 +99,32 @@ export default function Processing({ source, onComplete, onError }) {
           <div className="progress-fill" style={{ width: `${progress}%` }} />
         </div>
 
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-          {['Flashcards', 'Opción múltiple', 'FSRS', 'Spaced repetition'].map(tag => (
-            <span key={tag} className="chip chip-primary">{tag}</span>
-          ))}
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', minHeight: 36 }}>
+          {PROGRESS_CHIPS.map((chip) => {
+            const visible = msgIndex >= chip.threshold
+            return (
+              <span
+                key={chip.label}
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '5px 13px',
+                  borderRadius: 20,
+                  fontSize: 13,
+                  fontWeight: 600,
+                  background: chip.bg,
+                  color: chip.color,
+                  border: `1px solid ${chip.border}`,
+                  opacity: visible ? 1 : 0,
+                  transform: visible ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.9)',
+                  transition: 'opacity 0.4s ease, transform 0.4s ease',
+                  boxShadow: visible ? `0 2px 10px ${chip.bg}` : 'none',
+                }}
+              >
+                {chip.label}
+              </span>
+            )
+          })}
         </div>
 
       </div>

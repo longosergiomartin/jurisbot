@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { getDueCards } from '../services/fsrs'
+import WeeklyCalendar from './WeeklyCalendar'
 
 const KAI_MESSAGES = [
   name => `¡Hola ${name}! Tenés tarjetas esperando. Tu cerebro está listo para aprender.`,
@@ -11,6 +12,12 @@ const KAI_MESSAGES = [
 function getDailyMessage(name) {
   const dayIndex = new Date().getDay()
   return KAI_MESSAGES[dayIndex % KAI_MESSAGES.length](name)
+}
+
+function getSessionEstimate(totalDue) {
+  if (totalDue <= 10) return '~3 min'
+  if (totalDue <= 20) return '~5 min'
+  return '~8 min'
 }
 
 export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
@@ -28,9 +35,69 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
   // Find the deck with most due cards to study
   const bestDeckToStudy = [...deckStats].sort((a, b) => b.dueCount - a.dueCount)[0]
 
+  // Streak-at-risk banner logic
+  const today = new Date().toISOString().slice(0, 10)
+  const studiedToday = user.lastStudyDate === today
+  const showStreakBanner = user.streak > 0 && !studiedToday && totalDue > 0
+
+  const sessionEstimate = getSessionEstimate(totalDue)
+
   return (
     <div className="screen" style={{ paddingTop: 20 }}>
       <div className="container animate-fade">
+
+        {/* Streak-at-risk banner */}
+        {showStreakBanner && (
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(251,146,60,0.22) 0%, rgba(239,68,68,0.22) 100%)',
+              border: '1px solid rgba(251,146,60,0.45)',
+              borderRadius: 16,
+              padding: '14px 16px',
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              animation: 'streak-pulse 2.4s ease-in-out infinite',
+            }}
+          >
+            <style>{`
+              @keyframes streak-pulse {
+                0%, 100% { box-shadow: 0 0 0 0 rgba(251,146,60,0); }
+                50% { box-shadow: 0 0 16px 4px rgba(251,146,60,0.25); }
+              }
+            `}</style>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#fb923c', marginBottom: 2 }}>
+                ⚡ ¡Tu racha de {user.streak} {user.streak === 1 ? 'día' : 'días'} vence hoy!
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(251,146,60,0.8)' }}>
+                No pierdas el progreso que ya construiste
+              </div>
+            </div>
+            <button
+              className="btn"
+              onClick={() => bestDeckToStudy && onStudy(bestDeckToStudy.id)}
+              style={{
+                background: 'linear-gradient(135deg, #fb923c 0%, #ef4444 100%)',
+                color: '#fff',
+                fontSize: 12,
+                padding: '8px 14px',
+                borderRadius: 10,
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                flexDirection: 'column',
+                gap: 0,
+                lineHeight: 1.4,
+              }}
+            >
+              <span>Estudiar ahora</span>
+              <span style={{ fontWeight: 400, opacity: 0.85, fontSize: 11 }}>toma solo 5 min</span>
+            </button>
+          </div>
+        )}
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -50,13 +117,34 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
         {/* Stats row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
           {[
-            { label: 'Para hoy', value: totalDue, icon: '📚', color: totalDue > 0 ? 'var(--primary-light)' : 'var(--success)' },
-            { label: 'Sesiones', value: user.totalSessions, icon: '✅', color: 'var(--text-soft)' },
-            { label: 'XP total', value: user.xp, icon: '⭐', color: 'var(--accent)' },
-          ].map(({ label, value, icon, color }) => (
-            <div key={label} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
+            {
+              label: 'Para hoy',
+              value: totalDue,
+              icon: '📚',
+              color: totalDue > 0 ? 'var(--teal)' : 'var(--success)',
+              iconBg: 'var(--teal-dim)',
+              borderColor: 'rgba(34,211,238,0.2)',
+            },
+            {
+              label: 'Sesiones',
+              value: user.totalSessions,
+              icon: '✅',
+              color: 'var(--text-soft)',
+              iconBg: 'var(--success-dim)',
+              borderColor: 'rgba(52,211,153,0.15)',
+            },
+            {
+              label: 'XP total',
+              value: user.xp,
+              icon: '⭐',
+              color: 'var(--accent)',
+              iconBg: 'var(--accent-dim)',
+              borderColor: 'rgba(251,191,36,0.2)',
+            },
+          ].map(({ label, value, icon, color, iconBg, borderColor }) => (
+            <div key={label} style={{ background: 'var(--card)', border: `1px solid ${borderColor}`, borderRadius: 14, padding: '14px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: 26, marginBottom: 6, width: 44, height: 44, background: iconBg, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px' }}>{icon}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color }}>{value}</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{label}</div>
             </div>
           ))}
@@ -70,16 +158,21 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
 
         {/* Main CTA */}
         {totalDue > 0 && bestDeckToStudy && (
-          <button
-            className="btn btn-primary"
-            onClick={() => onStudy(bestDeckToStudy.id)}
-            style={{ width: '100%', padding: '16px', fontSize: 16, marginBottom: 20, borderRadius: 16, position: 'relative', overflow: 'hidden' }}
-          >
-            <span>⚡ Estudiar ahora</span>
-            <span style={{ marginLeft: 8, background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '2px 10px', fontSize: 13 }}>
-              {totalDue} tarjeta{totalDue !== 1 ? 's' : ''}
-            </span>
-          </button>
+          <div style={{ marginBottom: 20 }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => onStudy(bestDeckToStudy.id)}
+              style={{ width: '100%', padding: '16px', fontSize: 16, borderRadius: 16, position: 'relative', overflow: 'hidden' }}
+            >
+              <span>⚡ Estudiar ahora</span>
+              <span style={{ marginLeft: 8, background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '2px 10px', fontSize: 13 }}>
+                {totalDue} tarjeta{totalDue !== 1 ? 's' : ''}
+              </span>
+            </button>
+            <div style={{ textAlign: 'center', marginTop: 6, fontSize: 12, color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
+              {sessionEstimate} · sesión rápida
+            </div>
+          </div>
         )}
 
         {totalDue === 0 && decks.length > 0 && (
@@ -89,6 +182,9 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
             <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No tenés tarjetas pendientes por ahora. Volvé más tarde o agrega nuevo material.</div>
           </div>
         )}
+
+        {/* Weekly calendar */}
+        {decks.length > 0 && <WeeklyCalendar decks={decks} />}
 
         {/* Decks list */}
         <div style={{ marginBottom: 16 }}>
@@ -126,8 +222,15 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
   )
 }
 
+function getDomainColor(progress) {
+  if (progress < 30) return { color: '#f87171', gradient: 'linear-gradient(90deg, #f87171, #fb923c)' }
+  if (progress < 60) return { color: '#fb923c', gradient: 'linear-gradient(90deg, #fb923c, #fbbf24)' }
+  return { color: '#34d399', gradient: 'linear-gradient(90deg, #34d399, #22d3ee)' }
+}
+
 function DeckCard({ deck, onStudy }) {
   const progress = deck.total > 0 ? Math.round((deck.learned / deck.total) * 100) : 0
+  const { gradient: topGradient } = getDomainColor(progress)
 
   return (
     <div
@@ -135,7 +238,7 @@ function DeckCard({ deck, onStudy }) {
         background: 'var(--card)',
         border: `1px solid ${deck.dueCount > 0 ? 'rgba(124,58,237,0.3)' : 'var(--border)'}`,
         borderRadius: 16,
-        padding: '16px',
+        overflow: 'hidden',
         cursor: 'pointer',
         transition: 'all 0.2s',
       }}
@@ -143,26 +246,42 @@ function DeckCard({ deck, onStudy }) {
       onMouseEnter={e => e.currentTarget.style.background = 'var(--card-hover)'}
       onMouseLeave={e => e.currentTarget.style.background = 'var(--card)'}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {deck.title}
+      {/* Top gradient border based on mastery level */}
+      <div style={{ height: 3, background: topGradient, width: '100%' }} />
+
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {deck.title}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              {deck.total} tarjetas · {progress}% dominado
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            {deck.total} tarjetas · {progress}% dominado
-          </div>
+          {deck.dueCount > 0 && (
+            <span style={{
+              background: 'linear-gradient(135deg, var(--primary), var(--pink))',
+              color: '#fff',
+              borderRadius: 20,
+              padding: '4px 12px',
+              fontSize: 12,
+              fontWeight: 700,
+              flexShrink: 0,
+              marginLeft: 8,
+              boxShadow: '0 2px 8px var(--primary-glow)',
+              letterSpacing: '0.3px',
+            }}>
+              {deck.dueCount} hoy
+            </span>
+          )}
+          {deck.dueCount === 0 && (
+            <span style={{ fontSize: 16 }}>✅</span>
+          )}
         </div>
-        {deck.dueCount > 0 && (
-          <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 20, padding: '3px 10px', fontSize: 13, fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>
-            {deck.dueCount} hoy
-          </span>
-        )}
-        {deck.dueCount === 0 && (
-          <span style={{ fontSize: 16 }}>✅</span>
-        )}
-      </div>
-      <div className="progress-bar">
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${progress}%` }} />
+        </div>
       </div>
     </div>
   )
