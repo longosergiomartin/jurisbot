@@ -5,6 +5,7 @@ import Processing from './components/Processing'
 import Dashboard from './components/Dashboard'
 import StudySession from './components/StudySession'
 import SessionComplete from './components/SessionComplete'
+import CompanionChat from './components/CompanionChat'
 import * as storage from './services/storage'
 import { getDueCards } from './services/fsrs'
 
@@ -16,6 +17,7 @@ export default function App() {
   const [studyCards, setStudyCards] = useState([])
   const [activeDeckId, setActiveDeckId] = useState(null)
   const [sessionResults, setSessionResults] = useState(null)
+  const [companionDeckId, setCompanionDeckId] = useState(null)
 
   useEffect(() => {
     const u = storage.getUser()
@@ -70,6 +72,11 @@ export default function App() {
     setScreen('dashboard')
   }
 
+  function handleOpenCompanion(deckId) {
+    setCompanionDeckId(deckId)
+    setScreen('companion')
+  }
+
   if (screen === 'loading') {
     return (
       <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -101,6 +108,7 @@ export default function App() {
           user={user}
           decks={decks}
           onStudy={handleStudyDeck}
+          onCompanion={handleOpenCompanion}
           onNewDeck={() => setScreen('upload')}
         />
       )}
@@ -116,6 +124,12 @@ export default function App() {
           results={sessionResults}
           user={user}
           onDone={handleSessionDone}
+        />
+      )}
+      {screen === 'companion' && companionDeckId && (
+        <CompanionChat
+          deck={decks.find(d => d.id === companionDeckId)}
+          onClose={() => setScreen('dashboard')}
         />
       )}
     </>

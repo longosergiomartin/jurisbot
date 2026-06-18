@@ -4,6 +4,10 @@ const EXAMPLES = [
   'Pega aquí tus apuntes de clase, un capítulo de libro, o cualquier texto...',
 ]
 
+function getTodayStr() {
+  return new Date().toISOString().slice(0, 10)
+}
+
 export default function Upload({ onReady, onBack }) {
   const [text, setText] = useState('')
   const [fileName, setFileName] = useState('')
@@ -11,6 +15,8 @@ export default function Upload({ onReady, onBack }) {
   const [dragging, setDragging] = useState(false)
   const [title, setTitle] = useState('')
   const [cardCount, setCardCount] = useState(15)
+  const [hasGoal, setHasGoal] = useState(false)
+  const [targetDate, setTargetDate] = useState('')
   const fileRef = useRef()
 
   function getFileMeta(file) {
@@ -60,6 +66,7 @@ export default function Upload({ onReady, onBack }) {
       fileData: fileData || null,
       title: title.trim() || 'Sin título',
       cardCount,
+      goal: hasGoal && targetDate ? { targetDate, setAt: new Date().toISOString() } : null,
     })
   }
 
@@ -189,6 +196,85 @@ export default function Upload({ onReady, onBack }) {
               <div style={{ fontSize: 28, marginBottom: 6 }}>📎</div>
               <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Subir PDF o Word</div>
               <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Arrastrá aquí o hacé click · PDF o .docx · Máx 10 MB</div>
+            </div>
+          )}
+        </div>
+
+        {/* Goal section */}
+        <div style={{ marginBottom: 20 }}>
+          <button
+            onClick={() => setHasGoal(v => !v)}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: hasGoal ? 'var(--accent-dim)' : 'rgba(255,255,255,0.03)',
+              border: `1.5px solid ${hasGoal ? 'rgba(251,191,36,0.35)' : 'var(--border)'}`,
+              borderRadius: 12,
+              padding: '12px 16px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              fontFamily: 'inherit',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 18 }}>🎯</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: hasGoal ? 'var(--accent)' : 'var(--text-soft)' }}>
+                  Agregar fecha límite
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
+                  Kuma te ayuda a llegar a tiempo
+                </div>
+              </div>
+            </div>
+            <div style={{
+              width: 40,
+              height: 22,
+              borderRadius: 11,
+              background: hasGoal ? 'var(--accent)' : 'rgba(255,255,255,0.1)',
+              position: 'relative',
+              transition: 'background 0.2s',
+              flexShrink: 0,
+            }}>
+              <div style={{
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                background: '#fff',
+                position: 'absolute',
+                top: 3,
+                left: hasGoal ? 21 : 3,
+                transition: 'left 0.2s',
+              }} />
+            </div>
+          </button>
+
+          {hasGoal && (
+            <div style={{ marginTop: 10, padding: '14px 16px', background: 'rgba(251,191,36,0.06)', border: '1px solid rgba(251,191,36,0.2)', borderRadius: 12 }}>
+              <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', display: 'block', marginBottom: 8 }}>
+                ¿Para cuándo querés dominarlo?
+              </label>
+              <input
+                type="date"
+                value={targetDate}
+                min={getTodayStr()}
+                onChange={e => setTargetDate(e.target.value)}
+                style={{
+                  width: '100%',
+                  background: 'rgba(255,255,255,0.05)',
+                  border: '1.5px solid var(--border)',
+                  borderRadius: 10,
+                  padding: '10px 14px',
+                  fontSize: 14,
+                  outline: 'none',
+                  color: 'var(--text)',
+                  colorScheme: 'dark',
+                }}
+                onFocus={e => e.target.style.borderColor = 'var(--accent)'}
+                onBlur={e => e.target.style.borderColor = 'var(--border)'}
+              />
             </div>
           )}
         </div>
