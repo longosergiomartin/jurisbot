@@ -1,3 +1,13 @@
+const CONFETTI_PIECES = [
+  { color: '#8b5cf6', left: '10%', delay: '0s',   duration: '1.1s' },
+  { color: '#f43f5e', left: '25%', delay: '0.15s', duration: '1.3s' },
+  { color: '#fbbf24', left: '40%', delay: '0.05s', duration: '1.0s' },
+  { color: '#34d399', left: '55%', delay: '0.25s', duration: '1.2s' },
+  { color: '#22d3ee', left: '70%', delay: '0.1s',  duration: '1.4s' },
+  { color: '#fb7185', left: '82%', delay: '0.2s',  duration: '1.1s' },
+  { color: '#a78bfa', left: '92%', delay: '0.08s', duration: '1.3s' },
+]
+
 export default function SessionComplete({ results, user, onDone }) {
   const { correct, wrong, total, timeSeconds, xpEarned } = results
 
@@ -14,7 +24,28 @@ export default function SessionComplete({ results, user, onDone }) {
   }
 
   return (
-    <div className="screen" style={{ justifyContent: 'center' }}>
+    <div className="screen" style={{ justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+
+      {/* Confetti animation for accuracy >= 80% */}
+      {accuracy >= 80 && CONFETTI_PIECES.map((p, i) => (
+        <div
+          key={i}
+          className="confetti-piece"
+          style={{
+            position: 'absolute',
+            top: '-16px',
+            left: p.left,
+            width: 10,
+            height: 10,
+            background: p.color,
+            borderRadius: i % 2 === 0 ? '50%' : '2px',
+            animation: `confettiFall ${p.duration} ease-in ${p.delay} both`,
+            transform: `rotate(${i * 37}deg)`,
+            opacity: 0,
+          }}
+        />
+      ))}
+
       <div className="container animate-up" style={{ textAlign: 'center', maxWidth: 400 }}>
 
         {/* Celebration */}
@@ -32,14 +63,14 @@ export default function SessionComplete({ results, user, onDone }) {
         {/* Stats */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 24 }}>
           {[
-            { label: 'Correctas', value: correct, icon: '✅', color: 'var(--success)' },
-            { label: 'Precisión', value: `${accuracy}%`, icon: '🎯', color: accuracy >= 70 ? 'var(--success)' : 'var(--accent)' },
-            { label: 'XP ganados', value: `+${xpEarned}`, icon: '⭐', color: 'var(--accent)' },
-          ].map(({ label, value, icon, color }) => (
-            <div key={label} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 8px' }}>
-              <div style={{ fontSize: 22, marginBottom: 4 }}>{icon}</div>
-              <div style={{ fontSize: 20, fontWeight: 700, color }}>{value}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{label}</div>
+            { label: 'Correctas', value: correct, icon: '✅', color: 'var(--success)', bg: 'var(--success-dim)', border: 'rgba(52,211,153,0.2)' },
+            { label: 'Precisión', value: `${accuracy}%`, icon: '🎯', color: accuracy >= 70 ? 'var(--success)' : 'var(--accent)', bg: accuracy >= 70 ? 'var(--success-dim)' : 'var(--accent-dim)', border: accuracy >= 70 ? 'rgba(52,211,153,0.2)' : 'rgba(251,191,36,0.2)' },
+            { label: 'XP ganados', value: `+${xpEarned}`, icon: '⭐', color: 'var(--accent)', bg: 'var(--accent-dim)', border: 'rgba(251,191,36,0.2)' },
+          ].map(({ label, value, icon, color, bg, border }) => (
+            <div key={label} style={{ background: bg, border: `1px solid ${border}`, borderRadius: 14, padding: '16px 8px' }}>
+              <div style={{ fontSize: 26, marginBottom: 6 }}>{icon}</div>
+              <div style={{ fontSize: 26, fontWeight: 800, color }}>{value}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>{label}</div>
             </div>
           ))}
         </div>
