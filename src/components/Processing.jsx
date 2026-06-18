@@ -77,10 +77,10 @@ export default function Processing({ source, onComplete, onError }) {
     <div className="screen" style={{ justifyContent: 'center' }}>
       <div className="container animate-fade" style={{ textAlign: 'center', maxWidth: 400 }}>
 
-        <div style={{ fontSize: 72, marginBottom: 24, animation: 'float 2s ease-in-out infinite' }}>🦊</div>
+        <div style={{ fontSize: 72, marginBottom: 24, animation: 'float 2s ease-in-out infinite' }}>🐶</div>
 
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
-          Kai está trabajando{dots}
+          Kuma está trabajando{dots}
         </h2>
         <p style={{ color: 'var(--text-muted)', marginBottom: 32, fontSize: 14, minHeight: 20, transition: 'all 0.3s' }}>
           {MESSAGES[msgIndex]}

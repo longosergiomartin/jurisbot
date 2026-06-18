@@ -81,9 +81,9 @@ export default function Upload({ onReady, onBack }) {
 
         {/* Kai bubble */}
         <div className="kai-bubble" style={{ marginBottom: 20 }}>
-          <span className="kai-avatar">🦊</span>
+          <span className="kai-avatar">🐶</span>
           <div className="kai-text">
-            Pegá tus apuntes, o subí un PDF o Word (.docx). Yo me encargo de convertirlo en tarjetas de estudio listas para usar.
+            Pegá tus apuntes, o subí un PDF o Word (.docx). ¡Kuma se encarga de convertirlo en tarjetas listas para usar!
           </div>
         </div>
 

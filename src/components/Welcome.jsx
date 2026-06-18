@@ -16,7 +16,7 @@ export default function Welcome({ onSetupComplete }) {
 
         {/* Logo */}
         <div style={{ marginBottom: 32 }}>
-          <div style={{ fontSize: 64, marginBottom: 8, animation: 'float 3s ease-in-out infinite' }}>🦊</div>
+          <div style={{ fontSize: 64, marginBottom: 8, animation: 'float 3s ease-in-out infinite' }}>🐶</div>
           <h1 style={{ fontSize: 42, fontWeight: 800, letterSpacing: '-1px', background: 'linear-gradient(135deg, #a78bfa, #7c3aed)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', marginBottom: 4 }}>
             Cognify
           </h1>
@@ -31,7 +31,7 @@ export default function Welcome({ onSetupComplete }) {
             ['🧠', 'Tarjetas generadas por IA desde cualquier material'],
             ['⏱️', 'Repetición espaciada con algoritmo FSRS — estudio eficiente'],
             ['🔥', 'Rachas diarias que mantienen el hábito de estudio'],
-            ['🦊', 'Kai, tu tutor IA disponible 24/7 sin juicios'],
+            ['🐶', 'Kuma, tu tutora IA shiba inu disponible 24/7 sin juicios'],
           ].map(([icon, text]) => (
             <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', background: 'rgba(255,255,255,0.03)', borderRadius: 12, border: '1px solid var(--border)' }}>
               <span style={{ fontSize: 20 }}>{icon}</span>
@@ -43,9 +43,9 @@ export default function Welcome({ onSetupComplete }) {
         {/* Setup form */}
         <div className="card" style={{ textAlign: 'left' }}>
           <div className="kai-bubble" style={{ marginBottom: 20 }}>
-            <span className="kai-avatar">🦊</span>
+            <span className="kai-avatar">🐶</span>
             <div className="kai-text">
-              ¡Hola! Soy <strong>Kai</strong>, tu compañero de aprendizaje. ¿Cómo te llamas para empezar?
+              ¡Hola! Soy <strong>Kuma</strong>, tu compañera shiba inu de aprendizaje. 🐾 ¿Cómo te llamas para empezar?
             </div>
           </div>
 
