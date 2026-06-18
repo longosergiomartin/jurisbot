@@ -111,6 +111,12 @@ input, textarea {
   50% { box-shadow: 0 0 24px var(--primary-glow), 0 0 40px rgba(244, 63, 94, 0.15); }
 }
 
+@keyframes confettiFall {
+  0%   { opacity: 1; transform: translateY(0) rotate(0deg); }
+  80%  { opacity: 0.8; }
+  100% { opacity: 0; transform: translateY(100vh) rotate(720deg); }
+}
+
 .animate-fade { animation: fadeIn 0.4s ease forwards; }
 .animate-up { animation: fadeUp 0.5s ease forwards; }
 .animate-pop { animation: popIn 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
