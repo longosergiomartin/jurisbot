@@ -26,6 +26,7 @@ export default function StudySession({ cards, deckId, onComplete }) {
   const [userAnswer, setUserAnswer] = useState('')
   const [shortAnswerSubmitted, setShortAnswerSubmitted] = useState(false)
   const [showSocratic, setShowSocratic] = useState(false)
+  const [pendingRating, setPendingRating] = useState(null)
   const [updatedCards, setUpdatedCards] = useState([])
   const [results, setResults] = useState({ correct: 0, wrong: 0 })
   const [startTime] = useState(Date.now())
@@ -44,6 +45,7 @@ export default function StudySession({ cards, deckId, onComplete }) {
     setUserAnswer('')
     setShortAnswerSubmitted(false)
     setShowSocratic(false)
+    setPendingRating(null)
   }, [currentIndex])
 
   async function fetchFeedback(q, correctAns, userAns) {
@@ -83,6 +85,12 @@ export default function StudySession({ cards, deckId, onComplete }) {
     setShortAnswerSubmitted(true)
     setRevealed(true)
     await fetchFeedback(question, current.back, userAnswer)
+  }
+
+  function selectRating(value) {
+    if (pendingRating !== null) return
+    setPendingRating(value)
+    setTimeout(() => handleRate(value), 480)
   }
 
   const handleRate = useCallback((rating) => {
@@ -259,7 +267,7 @@ export default function StudySession({ cards, deckId, onComplete }) {
               onClick={() => setShowSocratic(true)}
               style={{ width: '100%', marginBottom: 12, fontSize: 14 }}
             >
-              🐶 Explicarle a Kuma (Técnica Feynman)
+              🐶 Practicar explicándoselo a Kuma
             </button>
           )}
 
@@ -291,26 +299,40 @@ export default function StudySession({ cards, deckId, onComplete }) {
           {revealed && current.type !== 'mcq' && (
             <div className="animate-pop" style={{ marginTop: 8 }}>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>
-                ¿Cómo te fue con esta tarjeta?
+                ¿Qué tan bien lo sabías?
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {RATING_CONFIG.map(r => (
-                  <button
-                    key={r.value}
-                    onClick={() => handleRate(r.value)}
-                    style={{
-                      background: r.bg, border: `1px solid ${r.color}30`, borderRadius: 12,
-                      padding: '12px 8px', color: r.color, fontWeight: 600, fontSize: 13,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      transition: 'all 0.15s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                  >
-                    {r.emoji} {r.label}
-                  </button>
-                ))}
+                {RATING_CONFIG.map(r => {
+                  const isSelected = pendingRating === r.value
+                  const isDimmed = pendingRating !== null && !isSelected
+                  return (
+                    <button
+                      key={r.value}
+                      onClick={() => selectRating(r.value)}
+                      disabled={pendingRating !== null}
+                      style={{
+                        background: isSelected ? r.color : r.bg,
+                        border: `1.5px solid ${isSelected ? r.color : r.color + '40'}`,
+                        borderRadius: 14,
+                        padding: '13px 8px',
+                        color: isSelected ? '#fff' : r.color,
+                        fontWeight: 700,
+                        fontSize: 13,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        transition: 'all 0.2s',
+                        transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                        opacity: isDimmed ? 0.28 : 1,
+                        boxShadow: isSelected ? `0 4px 16px ${r.color}55` : 'none',
+                      }}
+                    >
+                      {isSelected ? '✓' : r.emoji} {r.label}
+                    </button>
+                  )
+                })}
               </div>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8 }}>
+                Kuma usa tu respuesta para saber cuándo mostrarte esta tarjeta de nuevo 🐾
+              </p>
             </div>
           )}
 
@@ -318,24 +340,40 @@ export default function StudySession({ cards, deckId, onComplete }) {
           {current.type === 'mcq' && mcqResult && (
             <div className="animate-pop" style={{ marginTop: 8 }}>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>
-                ¿Cómo te resultó la pregunta?
+                ¿Qué tan fácil te resultó?
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {RATING_CONFIG.map(r => (
-                  <button
-                    key={r.value}
-                    onClick={() => handleRate(r.value)}
-                    style={{
-                      background: r.bg, border: `1px solid ${r.color}30`, borderRadius: 12,
-                      padding: '12px 8px', color: r.color, fontWeight: 600, fontSize: 13,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    {r.emoji} {r.label}
-                  </button>
-                ))}
+                {RATING_CONFIG.map(r => {
+                  const isSelected = pendingRating === r.value
+                  const isDimmed = pendingRating !== null && !isSelected
+                  return (
+                    <button
+                      key={r.value}
+                      onClick={() => selectRating(r.value)}
+                      disabled={pendingRating !== null}
+                      style={{
+                        background: isSelected ? r.color : r.bg,
+                        border: `1.5px solid ${isSelected ? r.color : r.color + '40'}`,
+                        borderRadius: 14,
+                        padding: '13px 8px',
+                        color: isSelected ? '#fff' : r.color,
+                        fontWeight: 700,
+                        fontSize: 13,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        transition: 'all 0.2s',
+                        transform: isSelected ? 'scale(1.05)' : 'scale(1)',
+                        opacity: isDimmed ? 0.28 : 1,
+                        boxShadow: isSelected ? `0 4px 16px ${r.color}55` : 'none',
+                      }}
+                    >
+                      {isSelected ? '✓' : r.emoji} {r.label}
+                    </button>
+                  )
+                })}
               </div>
+              <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8 }}>
+                Kuma usa tu respuesta para saber cuándo mostrarte esta tarjeta de nuevo 🐾
+              </p>
             </div>
           )}
 
