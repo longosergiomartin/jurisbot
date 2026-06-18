@@ -50,13 +50,34 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
         {/* Stats row */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
           {[
-            { label: 'Para hoy', value: totalDue, icon: '📚', color: totalDue > 0 ? 'var(--primary-light)' : 'var(--success)' },
-            { label: 'Sesiones', value: user.totalSessions, icon: '✅', color: 'var(--text-soft)' },
-            { label: 'XP total', value: user.xp, icon: '⭐', color: 'var(--accent)' },
-          ].map(({ label, value, icon, color }) => (
-            <div key={label} style={{ background: 'var(--card)', border: '1px solid var(--border)', borderRadius: 14, padding: '14px 12px', textAlign: 'center' }}>
-              <div style={{ fontSize: 20, marginBottom: 4 }}>{icon}</div>
-              <div style={{ fontSize: 22, fontWeight: 700, color }}>{value}</div>
+            {
+              label: 'Para hoy',
+              value: totalDue,
+              icon: '📚',
+              color: totalDue > 0 ? 'var(--teal)' : 'var(--success)',
+              iconBg: 'var(--teal-dim)',
+              borderColor: 'rgba(34,211,238,0.2)',
+            },
+            {
+              label: 'Sesiones',
+              value: user.totalSessions,
+              icon: '✅',
+              color: 'var(--text-soft)',
+              iconBg: 'var(--success-dim)',
+              borderColor: 'rgba(52,211,153,0.15)',
+            },
+            {
+              label: 'XP total',
+              value: user.xp,
+              icon: '⭐',
+              color: 'var(--accent)',
+              iconBg: 'var(--accent-dim)',
+              borderColor: 'rgba(251,191,36,0.2)',
+            },
+          ].map(({ label, value, icon, color, iconBg, borderColor }) => (
+            <div key={label} style={{ background: 'var(--card)', border: `1px solid ${borderColor}`, borderRadius: 14, padding: '14px 12px', textAlign: 'center' }}>
+              <div style={{ fontSize: 26, marginBottom: 6, width: 44, height: 44, background: iconBg, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px' }}>{icon}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color }}>{value}</div>
               <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{label}</div>
             </div>
           ))}
@@ -126,8 +147,15 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
   )
 }
 
+function getDomainColor(progress) {
+  if (progress < 30) return { color: '#f87171', gradient: 'linear-gradient(90deg, #f87171, #fb923c)' }
+  if (progress < 60) return { color: '#fb923c', gradient: 'linear-gradient(90deg, #fb923c, #fbbf24)' }
+  return { color: '#34d399', gradient: 'linear-gradient(90deg, #34d399, #22d3ee)' }
+}
+
 function DeckCard({ deck, onStudy }) {
   const progress = deck.total > 0 ? Math.round((deck.learned / deck.total) * 100) : 0
+  const { gradient: topGradient } = getDomainColor(progress)
 
   return (
     <div
@@ -135,7 +163,7 @@ function DeckCard({ deck, onStudy }) {
         background: 'var(--card)',
         border: `1px solid ${deck.dueCount > 0 ? 'rgba(124,58,237,0.3)' : 'var(--border)'}`,
         borderRadius: 16,
-        padding: '16px',
+        overflow: 'hidden',
         cursor: 'pointer',
         transition: 'all 0.2s',
       }}
@@ -143,26 +171,42 @@ function DeckCard({ deck, onStudy }) {
       onMouseEnter={e => e.currentTarget.style.background = 'var(--card-hover)'}
       onMouseLeave={e => e.currentTarget.style.background = 'var(--card)'}
     >
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {deck.title}
+      {/* Top gradient border based on mastery level */}
+      <div style={{ height: 3, background: topGradient, width: '100%' }} />
+
+      <div style={{ padding: '14px 16px' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {deck.title}
+            </div>
+            <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+              {deck.total} tarjetas · {progress}% dominado
+            </div>
           </div>
-          <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-            {deck.total} tarjetas · {progress}% dominado
-          </div>
+          {deck.dueCount > 0 && (
+            <span style={{
+              background: 'linear-gradient(135deg, var(--primary), var(--pink))',
+              color: '#fff',
+              borderRadius: 20,
+              padding: '4px 12px',
+              fontSize: 12,
+              fontWeight: 700,
+              flexShrink: 0,
+              marginLeft: 8,
+              boxShadow: '0 2px 8px var(--primary-glow)',
+              letterSpacing: '0.3px',
+            }}>
+              {deck.dueCount} hoy
+            </span>
+          )}
+          {deck.dueCount === 0 && (
+            <span style={{ fontSize: 16 }}>✅</span>
+          )}
         </div>
-        {deck.dueCount > 0 && (
-          <span style={{ background: 'var(--primary)', color: '#fff', borderRadius: 20, padding: '3px 10px', fontSize: 13, fontWeight: 600, flexShrink: 0, marginLeft: 8 }}>
-            {deck.dueCount} hoy
-          </span>
-        )}
-        {deck.dueCount === 0 && (
-          <span style={{ fontSize: 16 }}>✅</span>
-        )}
-      </div>
-      <div className="progress-bar">
-        <div className="progress-fill" style={{ width: `${progress}%` }} />
+        <div className="progress-bar">
+          <div className="progress-fill" style={{ width: `${progress}%` }} />
+        </div>
       </div>
     </div>
   )
