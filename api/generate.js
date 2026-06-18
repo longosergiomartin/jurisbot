@@ -1,3 +1,5 @@
+import mammoth from 'mammoth'
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
@@ -8,6 +10,20 @@ export default async function handler(req, res) {
   }
 
   const count = Math.min(Math.max(Number(cardCount) || 15, 5), 30)
+
+  // Extract text from DOCX before building the message
+  let docxText = null
+  if (fileData?.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    try {
+      const buffer = Buffer.from(fileData.base64, 'base64')
+      const result = await mammoth.extractRawText({ buffer })
+      docxText = result.value?.trim()
+      if (!docxText) return res.status(400).json({ error: 'No se pudo extraer texto del archivo Word.' })
+    } catch (err) {
+      console.error('DOCX extract error:', err)
+      return res.status(400).json({ error: 'Error al procesar el archivo Word.' })
+    }
+  }
 
   const instructions = `Eres un experto en pedagogía y aprendizaje activo. Analiza el siguiente material educativo y genera exactamente ${count} tarjetas de estudio de alta calidad.
 
@@ -47,7 +63,8 @@ FORMATO DE RESPUESTA — solo JSON, sin markdown, sin texto adicional:
 
 Genera las ${count} tarjetas ahora. Responde SOLO con el array JSON, sin texto antes ni después.`
 
-  const messageContent = fileData
+  const sourceText = text || docxText
+  const messageContent = fileData?.mimeType === 'application/pdf'
     ? [
         {
           type: 'document',
@@ -59,7 +76,7 @@ Genera las ${count} tarjetas ahora. Responde SOLO con el array JSON, sin texto a
         },
         { type: 'text', text: instructions },
       ]
-    : [{ type: 'text', text: `${instructions}\n\nMATERIAL:\n${text}` }]
+    : [{ type: 'text', text: `${instructions}\n\nMATERIAL:\n${sourceText}` }]
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {

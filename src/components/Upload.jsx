@@ -13,10 +13,23 @@ export default function Upload({ onReady, onBack }) {
   const [cardCount, setCardCount] = useState(15)
   const fileRef = useRef()
 
+  function getFileMeta(file) {
+    const name = file.name.toLowerCase()
+    if (file.type === 'application/pdf' || name.endsWith('.pdf'))
+      return { mimeType: 'application/pdf', icon: '📄', ext: /\.pdf$/i }
+    if (
+      file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+      name.endsWith('.docx')
+    )
+      return { mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', icon: '📝', ext: /\.docx$/i }
+    return null
+  }
+
   function handleFile(file) {
     if (!file) return
-    if (file.type !== 'application/pdf') {
-      alert('Solo se aceptan archivos PDF.')
+    const meta = getFileMeta(file)
+    if (!meta) {
+      alert('Solo se aceptan archivos PDF o Word (.docx).')
       return
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -26,9 +39,9 @@ export default function Upload({ onReady, onBack }) {
     const reader = new FileReader()
     reader.onload = e => {
       const base64 = e.target.result.split(',')[1]
-      setFileData({ base64, name: file.name })
+      setFileData({ base64, name: file.name, mimeType: meta.mimeType, icon: meta.icon })
       setFileName(file.name)
-      setTitle(file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' '))
+      setTitle(file.name.replace(meta.ext, '').replace(/[-_]/g, ' '))
       setText('')
     }
     reader.readAsDataURL(file)
@@ -70,7 +83,7 @@ export default function Upload({ onReady, onBack }) {
         <div className="kai-bubble" style={{ marginBottom: 20 }}>
           <span className="kai-avatar">🦊</span>
           <div className="kai-text">
-            Pegá tus apuntes, un capítulo de libro o sube un PDF. Yo me encargo de convertirlo en tarjetas de estudio listas para usar.
+            Pegá tus apuntes, o subí un PDF o Word (.docx). Yo me encargo de convertirlo en tarjetas de estudio listas para usar.
           </div>
         </div>
 
@@ -159,13 +172,13 @@ export default function Upload({ onReady, onBack }) {
             marginBottom: 20,
           }}
         >
-          <input ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} />
+          <input ref={fileRef} type="file" accept=".pdf,.docx" style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} />
           {fileData ? (
             <div>
-              <div style={{ fontSize: 28, marginBottom: 6 }}>📄</div>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>{fileData.icon}</div>
               <div style={{ fontWeight: 600, color: 'var(--success)', fontSize: 14 }}>{fileName}</div>
               <button
-                onClick={e => { e.stopPropagation(); setFileData(null); setFileName(''); }}
+                onClick={e => { e.stopPropagation(); setFileData(null); setFileName(''); setTitle('') }}
                 style={{ marginTop: 8, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}
               >
                 Quitar archivo
@@ -174,8 +187,8 @@ export default function Upload({ onReady, onBack }) {
           ) : (
             <div>
               <div style={{ fontSize: 28, marginBottom: 6 }}>📎</div>
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Subir PDF</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Arrastrá aquí o hacé click · Máx 10 MB</div>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Subir PDF o Word</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Arrastrá aquí o hacé click · PDF o .docx · Máx 10 MB</div>
             </div>
           )}
         </div>
