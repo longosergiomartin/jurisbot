@@ -1,0 +1,216 @@
+import { useState, useRef } from 'react'
+
+const EXAMPLES = [
+  'Pega aquí tus apuntes de clase, un capítulo de libro, o cualquier texto...',
+]
+
+export default function Upload({ onReady, onBack }) {
+  const [text, setText] = useState('')
+  const [fileName, setFileName] = useState('')
+  const [fileData, setFileData] = useState(null)
+  const [dragging, setDragging] = useState(false)
+  const [title, setTitle] = useState('')
+  const [cardCount, setCardCount] = useState(15)
+  const fileRef = useRef()
+
+  function handleFile(file) {
+    if (!file) return
+    if (file.type !== 'application/pdf') {
+      alert('Solo se aceptan archivos PDF.')
+      return
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('El archivo no puede superar 10 MB.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = e => {
+      const base64 = e.target.result.split(',')[1]
+      setFileData({ base64, name: file.name })
+      setFileName(file.name)
+      setTitle(file.name.replace(/\.pdf$/i, '').replace(/[-_]/g, ' '))
+      setText('')
+    }
+    reader.readAsDataURL(file)
+  }
+
+  function handleDrop(e) {
+    e.preventDefault()
+    setDragging(false)
+    handleFile(e.dataTransfer.files[0])
+  }
+
+  function handleGenerate() {
+    if (!text.trim() && !fileData) return
+    onReady({
+      text: text.trim() || null,
+      fileData: fileData || null,
+      title: title.trim() || 'Sin título',
+      cardCount,
+    })
+  }
+
+  const hasContent = text.trim() || fileData
+  const isTitleFilled = title.trim().length > 0
+
+  return (
+    <div className="screen">
+      <div className="container animate-fade" style={{ paddingTop: 16 }}>
+
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
+          <button onClick={onBack} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 20, padding: 4, lineHeight: 1 }}>←</button>
+          <div>
+            <h2 style={{ fontSize: 22, fontWeight: 700 }}>Nuevo mazo</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Sube tu material y Kai generará las tarjetas</p>
+          </div>
+        </div>
+
+        {/* Kai bubble */}
+        <div className="kai-bubble" style={{ marginBottom: 20 }}>
+          <span className="kai-avatar">🦊</span>
+          <div className="kai-text">
+            Pegá tus apuntes, un capítulo de libro o sube un PDF. Yo me encargo de convertirlo en tarjetas de estudio listas para usar.
+          </div>
+        </div>
+
+        {/* Title */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', display: 'block', marginBottom: 8 }}>
+            Nombre del mazo
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={e => setTitle(e.target.value)}
+            placeholder="Ej: Anatomía Cap. 3, Python Basics..."
+            maxLength={60}
+            style={{
+              width: '100%',
+              background: 'rgba(255,255,255,0.05)',
+              border: '1.5px solid var(--border)',
+              borderRadius: 12,
+              padding: '11px 14px',
+              fontSize: 15,
+              outline: 'none',
+              transition: 'border-color 0.2s',
+            }}
+            onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+            onBlur={e => e.target.style.borderColor = 'var(--border)'}
+          />
+        </div>
+
+        {/* Text input */}
+        {!fileData && (
+          <div style={{ marginBottom: 16 }}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', display: 'block', marginBottom: 8 }}>
+              Pegar texto
+            </label>
+            <textarea
+              value={text}
+              onChange={e => setText(e.target.value)}
+              placeholder={EXAMPLES[0]}
+              rows={8}
+              style={{
+                width: '100%',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1.5px solid var(--border)',
+                borderRadius: 14,
+                padding: '14px',
+                fontSize: 14,
+                lineHeight: 1.7,
+                resize: 'vertical',
+                outline: 'none',
+                transition: 'border-color 0.2s',
+                color: 'var(--text)',
+              }}
+              onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+              onBlur={e => e.target.style.borderColor = 'var(--border)'}
+            />
+            <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, textAlign: 'right' }}>
+              {text.length} caracteres
+            </div>
+          </div>
+        )}
+
+        {/* Divider */}
+        {!fileData && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16 }}>
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>o</span>
+            <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+          </div>
+        )}
+
+        {/* PDF drop zone */}
+        <div
+          onDragOver={e => { e.preventDefault(); setDragging(true) }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={handleDrop}
+          onClick={() => !fileData && fileRef.current?.click()}
+          style={{
+            border: `2px dashed ${fileData ? 'var(--success)' : dragging ? 'var(--primary)' : 'var(--border)'}`,
+            borderRadius: 14,
+            padding: '20px',
+            textAlign: 'center',
+            cursor: fileData ? 'default' : 'pointer',
+            background: fileData ? 'var(--success-dim)' : dragging ? 'var(--primary-dim)' : 'rgba(255,255,255,0.02)',
+            transition: 'all 0.2s',
+            marginBottom: 20,
+          }}
+        >
+          <input ref={fileRef} type="file" accept=".pdf" style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} />
+          {fileData ? (
+            <div>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>📄</div>
+              <div style={{ fontWeight: 600, color: 'var(--success)', fontSize: 14 }}>{fileName}</div>
+              <button
+                onClick={e => { e.stopPropagation(); setFileData(null); setFileName(''); }}
+                style={{ marginTop: 8, background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}
+              >
+                Quitar archivo
+              </button>
+            </div>
+          ) : (
+            <div>
+              <div style={{ fontSize: 28, marginBottom: 6 }}>📎</div>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Subir PDF</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Arrastrá aquí o hacé click · Máx 10 MB</div>
+            </div>
+          )}
+        </div>
+
+        {/* Card count */}
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span>Cantidad de tarjetas</span>
+            <span style={{ color: 'var(--primary-light)' }}>{cardCount}</span>
+          </label>
+          <input
+            type="range"
+            min={5}
+            max={30}
+            step={5}
+            value={cardCount}
+            onChange={e => setCardCount(Number(e.target.value))}
+            style={{ width: '100%', accentColor: 'var(--primary)', cursor: 'pointer' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+            <span>5 (rápido)</span>
+            <span>30 (completo)</span>
+          </div>
+        </div>
+
+        <button
+          className="btn btn-primary"
+          onClick={handleGenerate}
+          disabled={!hasContent || !isTitleFilled}
+          style={{ width: '100%', padding: '15px', fontSize: 16 }}
+        >
+          ✨ Generar {cardCount} tarjetas
+        </button>
+
+      </div>
+    </div>
+  )
+}
