@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { getDueCards } from '../services/fsrs'
+import WeeklyCalendar from './WeeklyCalendar'
 
 const KAI_MESSAGES = [
   name => `¡Hola ${name}! Tenés tarjetas esperando. Tu cerebro está listo para aprender.`,
@@ -11,6 +12,12 @@ const KAI_MESSAGES = [
 function getDailyMessage(name) {
   const dayIndex = new Date().getDay()
   return KAI_MESSAGES[dayIndex % KAI_MESSAGES.length](name)
+}
+
+function getSessionEstimate(totalDue) {
+  if (totalDue <= 10) return '~3 min'
+  if (totalDue <= 20) return '~5 min'
+  return '~8 min'
 }
 
 export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
@@ -28,9 +35,69 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
   // Find the deck with most due cards to study
   const bestDeckToStudy = [...deckStats].sort((a, b) => b.dueCount - a.dueCount)[0]
 
+  // Streak-at-risk banner logic
+  const today = new Date().toISOString().slice(0, 10)
+  const studiedToday = user.lastStudyDate === today
+  const showStreakBanner = user.streak > 0 && !studiedToday && totalDue > 0
+
+  const sessionEstimate = getSessionEstimate(totalDue)
+
   return (
     <div className="screen" style={{ paddingTop: 20 }}>
       <div className="container animate-fade">
+
+        {/* Streak-at-risk banner */}
+        {showStreakBanner && (
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(251,146,60,0.22) 0%, rgba(239,68,68,0.22) 100%)',
+              border: '1px solid rgba(251,146,60,0.45)',
+              borderRadius: 16,
+              padding: '14px 16px',
+              marginBottom: 16,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 12,
+              animation: 'streak-pulse 2.4s ease-in-out infinite',
+            }}
+          >
+            <style>{`
+              @keyframes streak-pulse {
+                0%, 100% { box-shadow: 0 0 0 0 rgba(251,146,60,0); }
+                50% { box-shadow: 0 0 16px 4px rgba(251,146,60,0.25); }
+              }
+            `}</style>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: 14, color: '#fb923c', marginBottom: 2 }}>
+                ⚡ ¡Tu racha de {user.streak} {user.streak === 1 ? 'día' : 'días'} vence hoy!
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(251,146,60,0.8)' }}>
+                No pierdas el progreso que ya construiste
+              </div>
+            </div>
+            <button
+              className="btn"
+              onClick={() => bestDeckToStudy && onStudy(bestDeckToStudy.id)}
+              style={{
+                background: 'linear-gradient(135deg, #fb923c 0%, #ef4444 100%)',
+                color: '#fff',
+                fontSize: 12,
+                padding: '8px 14px',
+                borderRadius: 10,
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
+                flexDirection: 'column',
+                gap: 0,
+                lineHeight: 1.4,
+              }}
+            >
+              <span>Estudiar ahora</span>
+              <span style={{ fontWeight: 400, opacity: 0.85, fontSize: 11 }}>toma solo 5 min</span>
+            </button>
+          </div>
+        )}
 
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
@@ -91,16 +158,21 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
 
         {/* Main CTA */}
         {totalDue > 0 && bestDeckToStudy && (
-          <button
-            className="btn btn-primary"
-            onClick={() => onStudy(bestDeckToStudy.id)}
-            style={{ width: '100%', padding: '16px', fontSize: 16, marginBottom: 20, borderRadius: 16, position: 'relative', overflow: 'hidden' }}
-          >
-            <span>⚡ Estudiar ahora</span>
-            <span style={{ marginLeft: 8, background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '2px 10px', fontSize: 13 }}>
-              {totalDue} tarjeta{totalDue !== 1 ? 's' : ''}
-            </span>
-          </button>
+          <div style={{ marginBottom: 20 }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => onStudy(bestDeckToStudy.id)}
+              style={{ width: '100%', padding: '16px', fontSize: 16, borderRadius: 16, position: 'relative', overflow: 'hidden' }}
+            >
+              <span>⚡ Estudiar ahora</span>
+              <span style={{ marginLeft: 8, background: 'rgba(255,255,255,0.2)', borderRadius: 20, padding: '2px 10px', fontSize: 13 }}>
+                {totalDue} tarjeta{totalDue !== 1 ? 's' : ''}
+              </span>
+            </button>
+            <div style={{ textAlign: 'center', marginTop: 6, fontSize: 12, color: 'var(--text-muted)', letterSpacing: '0.02em' }}>
+              {sessionEstimate} · sesión rápida
+            </div>
+          </div>
         )}
 
         {totalDue === 0 && decks.length > 0 && (
@@ -110,6 +182,9 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
             <div style={{ fontSize: 13, color: 'var(--text-muted)' }}>No tenés tarjetas pendientes por ahora. Volvé más tarde o agrega nuevo material.</div>
           </div>
         )}
+
+        {/* Weekly calendar */}
+        {decks.length > 0 && <WeeklyCalendar decks={decks} />}
 
         {/* Decks list */}
         <div style={{ marginBottom: 16 }}>
