@@ -53,7 +53,7 @@ export default function SessionComplete({ results, user, onDone }) {
 
         {/* Kai message */}
         <div className="kai-bubble" style={{ marginBottom: 28, textAlign: 'left' }}>
-          <span className="kai-avatar">🦊</span>
+          <span className="kai-avatar">🐶</span>
           <div className="kai-text">{getMessage()}</div>
         </div>
 

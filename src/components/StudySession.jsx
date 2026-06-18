@@ -64,7 +64,7 @@ export default function StudySession({ cards, deckId, onComplete }) {
 
   function handleReveal() {
     setRevealed(true)
-    fetchFeedback(question, current.back, '(sin respuesta del usuario)')
+    // No AI call — answer is already on the card; Kuma prompts rating below
   }
 
   function handleMCQSelect(index) {
@@ -232,21 +232,21 @@ export default function StudySession({ cards, deckId, onComplete }) {
             )}
           </div>
 
-          {/* Kai feedback bubble */}
+          {/* Kuma feedback bubble */}
           {revealed && (
             <div className="kai-bubble animate-fade" style={{ marginBottom: 16 }}>
-              <span className="kai-avatar">🦊</span>
+              <span className="kai-avatar">🐶</span>
               <div className="kai-text">
                 {loadingFeedback ? (
-                  <span style={{ opacity: 0.6, animation: 'pulse 1.5s infinite' }}>Kai está pensando...</span>
+                  <span style={{ opacity: 0.6, animation: 'pulse 1.5s infinite' }}>Kuma está pensando...</span>
+                ) : current.type === 'flashcard' ? (
+                  '¿Cuánto sabías antes de ver la respuesta? Calificá honestamente. 🐾'
+                ) : current.type === 'mcq' && mcqResult === 'correct' ? (
+                  '¡Exacto! Esa es la respuesta correcta. 🎯'
+                ) : current.type === 'mcq' && mcqResult === 'wrong' ? (
+                  aiFeedback || `La respuesta correcta era: "${current.options[current.correctIndex]}". ${mcqExplanation}`
                 ) : (
-                  aiFeedback || (
-                    current.type === 'mcq' && mcqResult === 'correct'
-                      ? '¡Excelente! Esa es la respuesta correcta.'
-                      : current.type === 'mcq' && mcqResult === 'wrong'
-                      ? `La respuesta correcta era: "${current.options[current.correctIndex]}". ${mcqExplanation}`
-                      : 'Ahora calificá qué tan bien la sabías.'
-                  )
+                  aiFeedback || '¿Cómo te fue? Calificá qué tan bien lo sabías.'
                 )}
               </div>
             </div>
@@ -259,9 +259,10 @@ export default function StudySession({ cards, deckId, onComplete }) {
               onClick={() => setShowSocratic(true)}
               style={{ width: '100%', marginBottom: 12, fontSize: 14 }}
             >
-              🦊 Explicarle a Kai (Técnica Feynman)
+              🐶 Explicarle a Kuma (Técnica Feynman)
             </button>
           )}
+
 
           {/* Show answer button — flashcard */}
           {current.type === 'flashcard' && !revealed && (

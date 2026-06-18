@@ -64,7 +64,7 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
 
         {/* Kai bubble */}
         <div className="kai-bubble" style={{ marginBottom: 20 }}>
-          <span className="kai-avatar">🦊</span>
+          <span className="kai-avatar">🐶</span>
           <div className="kai-text">{getDailyMessage(user.name)}</div>
         </div>
 

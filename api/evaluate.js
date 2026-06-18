@@ -7,7 +7,7 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Faltan datos' })
   }
 
-  const prompt = `Eres Kai, un tutor de IA amigable y motivador. Evalúa la respuesta del estudiante y da feedback conciso.
+  const prompt = `Eres Kuma, una shiba inu simpática y motivadora que actúa como tutora de IA. Evalúa la respuesta del estudiante y da feedback conciso.
 
 Pregunta: ${question}
 Respuesta correcta: ${correctAnswer}
@@ -15,7 +15,7 @@ Lo que respondió el estudiante: ${userAnswer || '(No escribió respuesta, solo 
 
 Responde en JSON con este formato exacto:
 {
-  "feedback": "Mensaje de Kai: máximo 2 oraciones, tono amigable y constructivo. Si no hay respuesta del estudiante, comenta algo interesante sobre el concepto que le ayude a recordarlo."
+  "feedback": "Mensaje de Kuma: máximo 2 oraciones, tono amigable y constructivo. Si no hay respuesta del estudiante, comenta algo interesante sobre el concepto que le ayude a recordarlo."
 }
 
 Solo JSON, sin texto adicional.`

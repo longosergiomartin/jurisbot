@@ -78,7 +78,7 @@ export default function SocraticSession({ concept, modelAnswer, onClose }) {
               Técnica Feynman
             </p>
             <p style={{ fontSize: 15, fontWeight: 700, color: 'var(--text)' }}>
-              Explicale a Kai 🦊
+              Explicale a Kuma 🐶
             </p>
           </div>
           <button className="btn btn-ghost" onClick={onClose} style={{ padding: '8px 16px', fontSize: 13 }}>
@@ -96,7 +96,7 @@ export default function SocraticSession({ concept, modelAnswer, onClose }) {
           {messages.map((msg, i) => (
             <div key={i} className={`socratic-msg ${msg.role}`}>
               {msg.role === 'assistant' && (
-                <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>🦊</span>
+                <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>🐶</span>
               )}
               <div className={`socratic-bubble ${msg.role}`}>
                 {msg.content}
@@ -106,7 +106,7 @@ export default function SocraticSession({ concept, modelAnswer, onClose }) {
 
           {loading && (
             <div className="socratic-msg assistant">
-              <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>🦊</span>
+              <span style={{ fontSize: 22, lineHeight: 1, flexShrink: 0 }}>🐶</span>
               <div className="socratic-bubble assistant" style={{ opacity: 0.6 }}>
                 <span style={{ animation: 'pulse 1.5s infinite', display: 'inline-block' }}>
                   Pensando...
@@ -140,7 +140,7 @@ export default function SocraticSession({ concept, modelAnswer, onClose }) {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Explicale a Kai con tus propias palabras... (Enter para enviar)"
+              placeholder="Explicale a Kuma con tus propias palabras... (Enter para enviar)"
               rows={2}
               disabled={loading}
               className="socratic-textarea"
