@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { scheduleCard } from '../services/fsrs'
+import SocraticSession from './SocraticSession'
 
 const RATING_CONFIG = [
   { value: 1, label: 'No lo sabía', emoji: '❌', color: 'var(--danger)', bg: 'var(--danger-dim)' },
@@ -8,50 +9,62 @@ const RATING_CONFIG = [
   { value: 4, label: 'Fácil', emoji: '⭐', color: 'var(--accent)', bg: 'var(--accent-dim)' },
 ]
 
+const CARD_LABELS = {
+  flashcard: '🃏 Flashcard',
+  mcq: '🔘 Opción múltiple',
+  short_answer: '✍️ Respuesta corta',
+}
+
 export default function StudySession({ cards, deckId, onComplete }) {
-  const [queue, setQueue] = useState(() => [...cards])
+  const [queue] = useState(() => [...cards])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
   const [selectedOption, setSelectedOption] = useState(null)
-  const [mcqResult, setMcqResult] = useState(null) // 'correct' | 'wrong'
+  const [mcqResult, setMcqResult] = useState(null)
   const [aiFeedback, setAiFeedback] = useState(null)
   const [loadingFeedback, setLoadingFeedback] = useState(false)
+  const [userAnswer, setUserAnswer] = useState('')
+  const [shortAnswerSubmitted, setShortAnswerSubmitted] = useState(false)
+  const [showSocratic, setShowSocratic] = useState(false)
   const [updatedCards, setUpdatedCards] = useState([])
   const [results, setResults] = useState({ correct: 0, wrong: 0 })
   const [startTime] = useState(Date.now())
-  const [cardStartTime, setCardStartTime] = useState(Date.now())
 
   const current = queue[currentIndex]
   const total = cards.length
   const progress = Math.round((currentIndex / total) * 100)
+  // Support both field names for backward compat with existing saved cards
+  const question = current?.front || current?.question || ''
 
   useEffect(() => {
     setRevealed(false)
     setSelectedOption(null)
     setMcqResult(null)
     setAiFeedback(null)
-    setCardStartTime(Date.now())
+    setUserAnswer('')
+    setShortAnswerSubmitted(false)
+    setShowSocratic(false)
   }, [currentIndex])
 
-  async function fetchFeedback(question, correctAnswer, userAnswer) {
+  async function fetchFeedback(q, correctAns, userAns) {
     setLoadingFeedback(true)
     try {
       const res = await fetch('/api/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, correctAnswer, userAnswer }),
+        body: JSON.stringify({ question: q, correctAnswer: correctAns, userAnswer: userAns }),
       })
       const data = await res.json()
       setAiFeedback(data.feedback || null)
     } catch {
-      // Fail silently — feedback is a bonus
+      // Feedback is a bonus, fail silently
     }
     setLoadingFeedback(false)
   }
 
   function handleReveal() {
     setRevealed(true)
-    fetchFeedback(current.front, current.back, '(sin respuesta del usuario)')
+    fetchFeedback(question, current.back, '(sin respuesta del usuario)')
   }
 
   function handleMCQSelect(index) {
@@ -61,32 +74,37 @@ export default function StudySession({ cards, deckId, onComplete }) {
     setMcqResult(correct ? 'correct' : 'wrong')
     setRevealed(true)
     if (!correct) {
-      fetchFeedback(current.front, current.back, current.options[index])
+      fetchFeedback(question, current.back || current.explanation, current.options[index])
     }
   }
 
+  async function handleShortAnswerSubmit() {
+    if (!userAnswer.trim()) return
+    setShortAnswerSubmitted(true)
+    setRevealed(true)
+    await fetchFeedback(question, current.back, userAnswer)
+  }
+
   const handleRate = useCallback((rating) => {
-    const now = new Date()
-    const scheduled = scheduleCard(current, rating, now)
+    const scheduled = scheduleCard(current, rating, new Date())
     setUpdatedCards(prev => [...prev, scheduled])
 
     const isCorrect = rating >= 3
-    setResults(prev => ({
-      correct: prev.correct + (isCorrect ? 1 : 0),
-      wrong: prev.wrong + (isCorrect ? 0 : 1),
-    }))
+    const newResults = {
+      correct: results.correct + (isCorrect ? 1 : 0),
+      wrong: results.wrong + (isCorrect ? 0 : 1),
+    }
+    setResults(newResults)
 
     const nextIndex = currentIndex + 1
     if (nextIndex >= queue.length) {
-      // Session done
-      const allUpdated = [...updatedCards, scheduled]
       onComplete({
-        updatedCards: allUpdated,
-        correct: results.correct + (isCorrect ? 1 : 0),
-        wrong: results.wrong + (isCorrect ? 0 : 1),
+        updatedCards: [...updatedCards, scheduled],
+        correct: newResults.correct,
+        wrong: newResults.wrong,
         total,
         timeSeconds: Math.round((Date.now() - startTime) / 1000),
-        xpEarned: (results.correct + (isCorrect ? 1 : 0)) * 10 + total * 2,
+        xpEarned: newResults.correct * 10 + total * 2,
       })
     } else {
       setCurrentIndex(nextIndex)
@@ -95,184 +113,233 @@ export default function StudySession({ cards, deckId, onComplete }) {
 
   if (!current) return null
 
-  return (
-    <div className="screen" style={{ paddingTop: 16 }}>
-      <div className="container animate-fade">
+  const mcqExplanation = current.back || current.explanation || ''
 
-        {/* Progress header */}
-        <div style={{ marginBottom: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-              {currentIndex + 1} / {total}
-            </span>
-            <div style={{ display: 'flex', gap: 8 }}>
-              <span style={{ fontSize: 13, color: 'var(--success)' }}>✅ {results.correct}</span>
-              <span style={{ fontSize: 13, color: 'var(--danger)' }}>❌ {results.wrong}</span>
+  return (
+    <>
+      {showSocratic && (
+        <SocraticSession
+          concept={question}
+          modelAnswer={current.back}
+          onClose={() => setShowSocratic(false)}
+        />
+      )}
+
+      <div className="screen" style={{ paddingTop: 16 }}>
+        <div className="container animate-fade">
+
+          {/* Progress header */}
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                {currentIndex + 1} / {total}
+              </span>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <span style={{ fontSize: 13, color: 'var(--success)' }}>✅ {results.correct}</span>
+                <span style={{ fontSize: 13, color: 'var(--danger)' }}>❌ {results.wrong}</span>
+              </div>
+            </div>
+            <div className="progress-bar">
+              <div className="progress-fill" style={{ width: `${progress}%` }} />
             </div>
           </div>
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${progress}%` }} />
+
+          {/* Card type badge */}
+          <div style={{ marginBottom: 16 }}>
+            <span className="chip chip-primary" style={{ fontSize: 11 }}>
+              {CARD_LABELS[current.type] || '🃏 Flashcard'}
+            </span>
           </div>
-        </div>
 
-        {/* Card type badge */}
-        <div style={{ marginBottom: 16 }}>
-          <span className={`chip chip-primary`} style={{ fontSize: 11 }}>
-            {current.type === 'mcq' ? '🔘 Opción múltiple' : '🃏 Flashcard'}
-          </span>
-        </div>
+          {/* Card */}
+          <div
+            className="card animate-fade"
+            style={{ marginBottom: 16, minHeight: 160, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '28px 24px' }}
+          >
+            <p style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.6, textAlign: 'center' }}>
+              {question}
+            </p>
 
-        {/* Card */}
-        <div
-          className="card animate-fade"
-          style={{ marginBottom: 16, minHeight: 160, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '28px 24px' }}
-        >
-          <p style={{ fontSize: 18, fontWeight: 600, lineHeight: 1.6, textAlign: 'center' }}>
-            {current.front}
-          </p>
+            {/* MCQ options */}
+            {current.type === 'mcq' && current.options && (
+              <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {current.options.map((opt, i) => {
+                  const isSelected = selectedOption === i
+                  const isCorrect = i === current.correctIndex
+                  let bg = 'rgba(255,255,255,0.04)'
+                  let border = 'var(--border)'
+                  let color = 'var(--text)'
+                  if (mcqResult) {
+                    if (isCorrect) { bg = 'var(--success-dim)'; border = 'var(--success)'; color = 'var(--success)' }
+                    else if (isSelected && !isCorrect) { bg = 'var(--danger-dim)'; border = 'var(--danger)'; color = 'var(--danger)' }
+                  } else if (isSelected) {
+                    bg = 'var(--primary-dim)'; border = 'var(--primary)'
+                  }
+                  return (
+                    <button
+                      key={i}
+                      onClick={() => handleMCQSelect(i)}
+                      disabled={!!mcqResult}
+                      style={{
+                        background: bg, border: `1.5px solid ${border}`, borderRadius: 12,
+                        padding: '12px 16px', textAlign: 'left', color, fontSize: 14,
+                        transition: 'all 0.2s', cursor: mcqResult ? 'default' : 'pointer',
+                      }}
+                    >
+                      <span style={{ fontWeight: 600, marginRight: 8, opacity: 0.6 }}>{String.fromCharCode(65 + i)}.</span>
+                      {opt}
+                      {mcqResult && isCorrect && <span style={{ float: 'right' }}>✓</span>}
+                      {mcqResult && isSelected && !isCorrect && <span style={{ float: 'right' }}>✗</span>}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
 
-          {/* MCQ options */}
-          {current.type === 'mcq' && current.options && (
-            <div style={{ marginTop: 20, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {current.options.map((opt, i) => {
-                const isSelected = selectedOption === i
-                const isCorrect = i === current.correctIndex
-                let bg = 'rgba(255,255,255,0.04)'
-                let border = 'var(--border)'
-                let color = 'var(--text)'
-                if (mcqResult) {
-                  if (isCorrect) { bg = 'var(--success-dim)'; border = 'var(--success)'; color = 'var(--success)' }
-                  else if (isSelected && !isCorrect) { bg = 'var(--danger-dim)'; border = 'var(--danger)'; color = 'var(--danger)' }
-                } else if (isSelected) {
-                  bg = 'var(--primary-dim)'; border = 'var(--primary)'
-                }
-                return (
+            {/* Short answer: input */}
+            {current.type === 'short_answer' && !shortAnswerSubmitted && (
+              <div style={{ marginTop: 20 }}>
+                <textarea
+                  value={userAnswer}
+                  onChange={e => setUserAnswer(e.target.value)}
+                  placeholder="Escribí tu respuesta con tus propias palabras..."
+                  rows={4}
+                  className="short-answer-input"
+                />
+              </div>
+            )}
+
+            {/* Short answer: revealed */}
+            {current.type === 'short_answer' && shortAnswerSubmitted && (
+              <div style={{ marginTop: 20 }}>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Tu respuesta:</p>
+                <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text-soft)', fontStyle: 'italic', marginBottom: 16 }}>
+                  "{userAnswer}"
+                </p>
+                <div style={{ paddingTop: 16, borderTop: '1px solid var(--border)' }}>
+                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>Respuesta esperada:</p>
+                  <p style={{ fontSize: 14, lineHeight: 1.6, color: 'var(--text)' }}>{current.back}</p>
+                </div>
+              </div>
+            )}
+
+            {/* Flashcard: revealed answer */}
+            {current.type === 'flashcard' && revealed && (
+              <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>Respuesta:</p>
+                <p style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--text)' }}>{current.back}</p>
+              </div>
+            )}
+          </div>
+
+          {/* Kai feedback bubble */}
+          {revealed && (
+            <div className="kai-bubble animate-fade" style={{ marginBottom: 16 }}>
+              <span className="kai-avatar">🦊</span>
+              <div className="kai-text">
+                {loadingFeedback ? (
+                  <span style={{ opacity: 0.6, animation: 'pulse 1.5s infinite' }}>Kai está pensando...</span>
+                ) : (
+                  aiFeedback || (
+                    current.type === 'mcq' && mcqResult === 'correct'
+                      ? '¡Excelente! Esa es la respuesta correcta.'
+                      : current.type === 'mcq' && mcqResult === 'wrong'
+                      ? `La respuesta correcta era: "${current.options[current.correctIndex]}". ${mcqExplanation}`
+                      : 'Ahora calificá qué tan bien la sabías.'
+                  )
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Feynman button (flashcard only, after reveal) */}
+          {current.type === 'flashcard' && revealed && (
+            <button
+              className="btn btn-ghost"
+              onClick={() => setShowSocratic(true)}
+              style={{ width: '100%', marginBottom: 12, fontSize: 14 }}
+            >
+              🦊 Explicarle a Kai (Técnica Feynman)
+            </button>
+          )}
+
+          {/* Show answer button — flashcard */}
+          {current.type === 'flashcard' && !revealed && (
+            <button
+              className="btn btn-primary"
+              onClick={handleReveal}
+              style={{ width: '100%', padding: '15px', fontSize: 16 }}
+            >
+              Mostrar respuesta
+            </button>
+          )}
+
+          {/* Submit button — short answer */}
+          {current.type === 'short_answer' && !shortAnswerSubmitted && (
+            <button
+              className="btn btn-primary"
+              onClick={handleShortAnswerSubmit}
+              disabled={!userAnswer.trim()}
+              style={{ width: '100%', padding: '15px', fontSize: 16 }}
+            >
+              Evaluar mi respuesta
+            </button>
+          )}
+
+          {/* Rating buttons — flashcard & short_answer */}
+          {revealed && current.type !== 'mcq' && (
+            <div className="animate-pop" style={{ marginTop: 8 }}>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>
+                ¿Cómo te fue con esta tarjeta?
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {RATING_CONFIG.map(r => (
                   <button
-                    key={i}
-                    onClick={() => handleMCQSelect(i)}
-                    disabled={!!mcqResult}
+                    key={r.value}
+                    onClick={() => handleRate(r.value)}
                     style={{
-                      background: bg, border: `1.5px solid ${border}`, borderRadius: 12,
-                      padding: '12px 16px', textAlign: 'left', color, fontSize: 14,
-                      transition: 'all 0.2s', cursor: mcqResult ? 'default' : 'pointer',
+                      background: r.bg, border: `1px solid ${r.color}30`, borderRadius: 12,
+                      padding: '12px 8px', color: r.color, fontWeight: 600, fontSize: 13,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
+                    onMouseLeave={e => e.currentTarget.style.opacity = '1'}
+                  >
+                    {r.emoji} {r.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Rating buttons — MCQ */}
+          {current.type === 'mcq' && mcqResult && (
+            <div className="animate-pop" style={{ marginTop: 8 }}>
+              <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>
+                ¿Cómo te resultó la pregunta?
+              </p>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                {RATING_CONFIG.map(r => (
+                  <button
+                    key={r.value}
+                    onClick={() => handleRate(r.value)}
+                    style={{
+                      background: r.bg, border: `1px solid ${r.color}30`, borderRadius: 12,
+                      padding: '12px 8px', color: r.color, fontWeight: 600, fontSize: 13,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                      transition: 'all 0.15s',
                     }}
                   >
-                    <span style={{ fontWeight: 600, marginRight: 8, opacity: 0.6 }}>{String.fromCharCode(65 + i)}.</span>
-                    {opt}
-                    {mcqResult && isCorrect && <span style={{ float: 'right' }}>✓</span>}
-                    {mcqResult && isSelected && !isCorrect && <span style={{ float: 'right' }}>✗</span>}
+                    {r.emoji} {r.label}
                   </button>
-                )
-              })}
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Flashcard revealed answer */}
-          {current.type === 'flashcard' && revealed && (
-            <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid var(--border)' }}>
-              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>Respuesta:</p>
-              <p style={{ fontSize: 16, lineHeight: 1.7, color: 'var(--text)' }}>{current.back}</p>
-            </div>
-          )}
         </div>
-
-        {/* AI Feedback (Kai) */}
-        {revealed && (
-          <div className="kai-bubble animate-fade" style={{ marginBottom: 16 }}>
-            <span className="kai-avatar">🦊</span>
-            <div className="kai-text">
-              {loadingFeedback ? (
-                <span style={{ opacity: 0.6, animation: 'pulse 1.5s infinite' }}>Kai está pensando...</span>
-              ) : (
-                aiFeedback || (current.type === 'mcq' && mcqResult === 'correct'
-                  ? '¡Excelente! Esa es la respuesta correcta.'
-                  : current.type === 'mcq' && mcqResult === 'wrong'
-                  ? `La respuesta correcta era: "${current.options[current.correctIndex]}". ${current.back}`
-                  : 'Ahora calificá qué tan bien la sabías.')
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Actions */}
-        {current.type === 'flashcard' && !revealed && (
-          <button
-            className="btn btn-primary"
-            onClick={handleReveal}
-            style={{ width: '100%', padding: '15px', fontSize: 16 }}
-          >
-            Mostrar respuesta
-          </button>
-        )}
-
-        {revealed && (
-          <div className="animate-pop">
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>
-              ¿Cómo te fue con esta tarjeta?
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {RATING_CONFIG.map(r => (
-                <button
-                  key={r.value}
-                  onClick={() => handleRate(r.value)}
-                  style={{
-                    background: r.bg,
-                    border: `1px solid ${r.color}30`,
-                    borderRadius: 12,
-                    padding: '12px 8px',
-                    color: r.color,
-                    fontWeight: 600,
-                    fontSize: 13,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    transition: 'all 0.15s',
-                  }}
-                  onMouseEnter={e => e.currentTarget.style.opacity = '0.85'}
-                  onMouseLeave={e => e.currentTarget.style.opacity = '1'}
-                >
-                  {r.emoji} {r.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* MCQ auto-proceed after selecting */}
-        {current.type === 'mcq' && mcqResult && (
-          <div className="animate-pop" style={{ marginTop: 8 }}>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>
-              ¿Cómo te resultó la pregunta?
-            </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-              {RATING_CONFIG.map(r => (
-                <button
-                  key={r.value}
-                  onClick={() => handleRate(r.value)}
-                  style={{
-                    background: r.bg,
-                    border: `1px solid ${r.color}30`,
-                    borderRadius: 12,
-                    padding: '12px 8px',
-                    color: r.color,
-                    fontWeight: 600,
-                    fontSize: 13,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 6,
-                    transition: 'all 0.15s',
-                  }}
-                >
-                  {r.emoji} {r.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
       </div>
-    </div>
+    </>
   )
 }

@@ -12,16 +12,17 @@ export default async function handler(req, res) {
   const instructions = `Eres un experto en pedagogía y aprendizaje activo. Analiza el siguiente material educativo y genera exactamente ${count} tarjetas de estudio de alta calidad.
 
 TIPOS DE TARJETAS:
-- "flashcard": Concepto clave al frente, explicación clara al dorso. Ideal para definiciones, procesos, fórmulas.
-- "mcq": Pregunta de opción múltiple con 4 opciones (solo una correcta) y una breve explicación de la respuesta correcta.
+- "flashcard": Concepto clave al frente ("front"), explicación clara al dorso ("back"). Ideal para definiciones, procesos, fórmulas.
+- "mcq": Pregunta al frente ("front"), opciones múltiples (solo una correcta), y explicación de la respuesta correcta en ("back").
+- "short_answer": Pregunta abierta en ("front") que requiere que el estudiante construya su respuesta con sus propias palabras. La respuesta modelo va en ("back"). Usar para aplicaciones, análisis y conexiones entre conceptos.
 
 REGLAS PEDAGÓGICAS:
 1. Prioriza la comprensión sobre la memorización mecánica.
 2. Las preguntas deben ser concretas y sin ambigüedad.
 3. Las opciones incorrectas de MCQ deben ser plausibles pero claramente distintas.
-4. Las respuestas de flashcard deben ser completas pero concisas (máx 3 oraciones).
+4. Las respuestas deben ser completas pero concisas (máx 3 oraciones).
 5. Varía entre conceptos fundamentales, aplicaciones y conexiones entre ideas.
-6. Incluye aproximadamente 60% flashcards y 40% MCQ.
+6. Incluye aproximadamente 40% flashcards, 25% MCQ y 35% short_answer.
 
 FORMATO DE RESPUESTA — solo JSON, sin markdown, sin texto adicional:
 [
@@ -32,10 +33,15 @@ FORMATO DE RESPUESTA — solo JSON, sin markdown, sin texto adicional:
   },
   {
     "type": "mcq",
-    "question": "¿Cuál de las siguientes afirmaciones sobre X es correcta?",
+    "front": "¿Cuál de las siguientes afirmaciones sobre X es correcta?",
     "options": ["opción A", "opción B", "opción C", "opción D"],
     "correctIndex": 2,
-    "explanation": "La respuesta es C porque..."
+    "back": "La respuesta es C porque..."
+  },
+  {
+    "type": "short_answer",
+    "front": "Explicá con tus propias palabras cómo funciona...",
+    "back": "Se espera que el estudiante mencione: ..."
   }
 ]
 
@@ -80,7 +86,6 @@ Genera las ${count} tarjetas ahora. Responde SOLO con el array JSON, sin texto a
 
     const rawText = data.content?.find(b => b.type === 'text')?.text || ''
 
-    // Extract JSON array from response
     const jsonMatch = rawText.match(/\[[\s\S]*\]/)
     if (!jsonMatch) {
       console.error('No JSON array found in response:', rawText.slice(0, 200))
@@ -93,10 +98,10 @@ Genera las ${count} tarjetas ahora. Responde SOLO con el array JSON, sin texto a
       return res.status(500).json({ error: 'No se generaron tarjetas válidas' })
     }
 
-    // Validate and clean cards
     const validCards = cards.filter(c => {
       if (c.type === 'flashcard') return c.front && c.back
-      if (c.type === 'mcq') return c.question && Array.isArray(c.options) && c.options.length >= 2 && typeof c.correctIndex === 'number'
+      if (c.type === 'mcq') return c.front && Array.isArray(c.options) && c.options.length >= 2 && typeof c.correctIndex === 'number'
+      if (c.type === 'short_answer') return c.front && c.back
       return false
     })
 
