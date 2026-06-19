@@ -154,8 +154,8 @@ export default function PomodoroTimer({ autoStart = false }) {
       <div
         style={{
           position: 'fixed',
-          top: 16,
-          right: 16,
+          top: 'calc(16px + env(safe-area-inset-top, 0px))',
+          right: 'calc(16px + env(safe-area-inset-right, 0px))',
           zIndex: 100,
           userSelect: 'none',
         }}

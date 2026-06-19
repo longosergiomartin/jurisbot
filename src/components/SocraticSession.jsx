@@ -7,6 +7,7 @@ const STARTER_CHIPS = [
 ]
 
 export default function SocraticSession({ concept, modelAnswer, onClose }) {
+  const isMobile = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
   const [messages, setMessages] = useState(() => [
     { role: 'assistant', content: `¡Hola! Explicame qué es "${concept}" con tus propias palabras, como si yo nunca hubiera escuchado ese término. 🐾` },
   ])
@@ -47,7 +48,7 @@ export default function SocraticSession({ concept, modelAnswer, onClose }) {
   }
 
   function handleKeyDown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
       e.preventDefault()
       sendMessage()
     }
@@ -156,7 +157,7 @@ export default function SocraticSession({ concept, modelAnswer, onClose }) {
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Explicale a Kuma con tus propias palabras... (Enter para enviar)"
+              placeholder={isMobile ? 'Explicale a Kuma con tus propias palabras...' : 'Explicale a Kuma con tus propias palabras... (Enter para enviar)'}
               rows={2}
               disabled={loading}
               className="socratic-textarea"

@@ -8,6 +8,7 @@ export default function CompanionChat({ deck, onClose }) {
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
+  const isMobile = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
 
   useEffect(() => {
     // Fetch a personalized opening from the API in the background;
@@ -70,7 +71,7 @@ export default function CompanionChat({ deck, onClose }) {
   }
 
   function handleKeyDown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
       e.preventDefault()
       handleSend()
     }
@@ -168,7 +169,7 @@ export default function CompanionChat({ deck, onClose }) {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Preguntá, comentá, debatí... (Enter para enviar)"
+            placeholder={isMobile ? 'Preguntá, comentá, debatí...' : 'Preguntá, comentá, debatí... (Enter para enviar)'}
             rows={1}
             className="socratic-textarea"
             style={{ minHeight: 44, maxHeight: 120 }}

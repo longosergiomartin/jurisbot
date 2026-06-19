@@ -18,7 +18,7 @@ export default function SessionComplete({ results, user, onDone }) {
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0
   const mins = Math.floor(timeSeconds / 60)
   const secs = timeSeconds % 60
-  const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
+  const timeStr = mins > 0 ? `${mins}m ${secs}s` : null
 
   const levelInfo = getLevel(user.xp)
   const streakMilestone = STREAK_MILESTONES.includes(user.streak) ? user.streak : null
@@ -104,7 +104,7 @@ export default function SessionComplete({ results, user, onDone }) {
           ¡Sesión completada!
         </h2>
         <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>
-          {timeStr} de estudio enfocado
+          {timeStr ? `${timeStr} de estudio enfocado` : '¡Sesión relámpago! ⚡'}
         </p>
 
         {/* Stats */}

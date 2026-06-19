@@ -134,9 +134,17 @@ export default function App() {
   }
 
   function handleDeckCreated(deck) {
-    const updatedDecks = storage.addDeck(deck)
+    const existingTitles = decks.map(d => d.title)
+    let title = deck.title
+    if (existingTitles.includes(title)) {
+      let i = 2
+      while (existingTitles.includes(`${deck.title} (${i})`)) i++
+      title = `${deck.title} (${i})`
+    }
+    const finalDeck = title !== deck.title ? { ...deck, title } : deck
+    const updatedDecks = storage.addDeck(finalDeck)
     setDecks(updatedDecks)
-    setActiveDeckId(deck.id)
+    setActiveDeckId(finalDeck.id)
     setScreen('preview')
   }
 

@@ -22,6 +22,7 @@ const PROGRESS_CHIPS = [
 export default function Processing({ source, onComplete, onError }) {
   const [msgIndex, setMsgIndex] = useState(0)
   const [dots, setDots] = useState('.')
+  const [error, setError] = useState(null)
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -42,30 +43,39 @@ export default function Processing({ source, onComplete, onError }) {
   }, [])
 
   async function generate() {
+    let res
     try {
-      const body = {
-        text: source.text,
-        fileData: source.fileData,
-        cardCount: source.cardCount,
-      }
-
-      const res = await fetch('/api/generate', {
+      res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
+        body: JSON.stringify({
+          text: source.text,
+          fileData: source.fileData,
+          cardCount: source.cardCount,
+        }),
       })
+    } catch {
+      setError('Sin conexión — verificá tu internet y volvé a intentarlo.')
+      return
+    }
 
-      if (!res.ok) throw new Error('API error')
+    if (res.status === 429) {
+      setError('Demasiadas solicitudes — esperá un momento y volvé a intentarlo.')
+      return
+    }
+    if (!res.ok) {
+      setError('No pudimos leer ese material — probá pegando el texto directamente.')
+      return
+    }
 
+    try {
       const data = await res.json()
-
       if (!data.cards || !Array.isArray(data.cards) || data.cards.length === 0) {
-        throw new Error('No cards returned')
+        setError('No pudimos extraer tarjetas de ese material — probá con un texto más largo o diferente.')
+        return
       }
-
       const deckId = `deck_${Date.now()}`
       const cards = data.cards.map(c => createCard(c, deckId))
-
       const deck = {
         id: deckId,
         title: source.title,
@@ -74,15 +84,41 @@ export default function Processing({ source, onComplete, onError }) {
         chapter: source.chapter || null,
         cards,
       }
-
       onComplete(deck)
-    } catch (err) {
-      console.error('Generate error:', err)
-      onError()
+    } catch {
+      setError('Ocurrió un error inesperado — volvé a intentarlo.')
     }
   }
 
   const progress = ((msgIndex + 1) / MESSAGES.length) * 100
+
+  if (error) {
+    return (
+      <div className="screen" style={{ justifyContent: 'center' }}>
+        <div className="container animate-fade" style={{ textAlign: 'center', maxWidth: 400 }}>
+          <div style={{ fontSize: 64, marginBottom: 16 }}>😔</div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 10 }}>Algo salió mal</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 28, lineHeight: 1.6 }}>{error}</p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => { setError(null); generate() }}
+              style={{ width: '100%', padding: '13px', fontSize: 15 }}
+            >
+              🔄 Reintentar
+            </button>
+            <button
+              className="btn btn-ghost"
+              onClick={() => onError()}
+              style={{ width: '100%', padding: '12px', fontSize: 14 }}
+            >
+              ← Volver a cargar material
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="screen" style={{ justifyContent: 'center' }}>
