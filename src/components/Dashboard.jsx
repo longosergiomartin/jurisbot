@@ -1,6 +1,7 @@
-import { useMemo } from 'react'
+import { useMemo, useEffect, useState } from 'react'
 import { getDueCards } from '../services/fsrs'
 import WeeklyCalendar from './WeeklyCalendar'
+import { requestNotificationPermission, showReminderIfDue } from '../services/notifications'
 
 const KAI_MESSAGES = [
   name => `¡Hola ${name}! Tenés tarjetas esperando. Tu cerebro está listo para aprender.`,
@@ -31,6 +32,21 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
   }, [decks])
 
   const totalDue = deckStats.reduce((sum, d) => sum + d.dueCount, 0)
+
+  // Notification permission state
+  const [notifPermission, setNotifPermission] = useState(
+    () => ('Notification' in window ? Notification.permission : 'denied')
+  )
+
+  useEffect(() => {
+    showReminderIfDue(totalDue)
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleRequestNotif() {
+    requestNotificationPermission().then(granted => {
+      setNotifPermission(granted ? 'granted' : 'denied')
+    })
+  }
 
   // Find the deck with most due cards to study
   const bestDeckToStudy = [...deckStats].sort((a, b) => b.dueCount - a.dueCount)[0]
@@ -109,8 +125,29 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
               {new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long' })}
             </p>
           </div>
-          <div className="streak-badge">
-            🔥 {user.streak} {user.streak === 1 ? 'día' : 'días'}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            {notifPermission !== 'granted' && (
+              <button
+                onClick={handleRequestNotif}
+                title="Activar recordatorio diario"
+                style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 20,
+                  padding: '6px 10px',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  fontFamily: 'inherit',
+                  lineHeight: 1,
+                }}
+              >
+                🔔
+              </button>
+            )}
+            <div className="streak-badge">
+              🔥 {user.streak} {user.streak === 1 ? 'día' : 'días'}
+            </div>
           </div>
         </div>
 
@@ -228,17 +265,22 @@ function getDomainColor(progress) {
   return { color: '#34d399', gradient: 'linear-gradient(90deg, #34d399, #22d3ee)' }
 }
 
-function getGoalStatus(goal, progress) {
+function getGoalStatus(goal, progress, total, learned) {
   if (!goal?.targetDate) return null
   const today = new Date()
   const target = new Date(goal.targetDate)
   const daysLeft = Math.ceil((target - today) / (1000 * 60 * 60 * 24))
-  if (daysLeft < 0) return { label: 'Fecha vencida', color: 'var(--danger)', icon: '⚠️', daysLeft: 0 }
+  if (daysLeft < 0) return { label: 'Fecha vencida', color: 'var(--danger)', icon: '⚠️', daysLeft: 0, dailyTarget: 0 }
   const expectedProgress = Math.max(0, 100 - (daysLeft / 30) * 100)
   const onTrack = progress >= expectedProgress - 10
+  const cardsRemaining = total - learned
+  const dailyTarget = (daysLeft > 0 && cardsRemaining > 0)
+    ? Math.ceil(cardsRemaining / Math.max(daysLeft, 1))
+    : 0
   return {
     daysLeft,
     onTrack,
+    dailyTarget,
     label: daysLeft === 0 ? '¡Hoy es el día!' : `${daysLeft} día${daysLeft !== 1 ? 's' : ''} restantes`,
     color: onTrack ? 'var(--success)' : 'var(--accent)',
     icon: onTrack ? '🟢' : '🟡',
@@ -248,7 +290,7 @@ function getGoalStatus(goal, progress) {
 function DeckCard({ deck, onStudy, onCompanion }) {
   const progress = deck.total > 0 ? Math.round((deck.learned / deck.total) * 100) : 0
   const { gradient: topGradient } = getDomainColor(progress)
-  const goalStatus = getGoalStatus(deck.goal, progress)
+  const goalStatus = getGoalStatus(deck.goal, progress, deck.total, deck.learned)
 
   return (
     <div
@@ -304,23 +346,29 @@ function DeckCard({ deck, onStudy, onCompanion }) {
 
         {/* Goal status */}
         {goalStatus && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 6,
-            padding: '6px 10px',
-            background: goalStatus.onTrack ? 'var(--success-dim)' : 'var(--accent-dim)',
-            borderRadius: 8,
-            marginBottom: 12,
-          }}>
-            <span style={{ fontSize: 12 }}>{goalStatus.icon}</span>
-            <span style={{ fontSize: 12, color: goalStatus.color, fontWeight: 600 }}>
-              {goalStatus.label}
-            </span>
-            {goalStatus.onTrack && (
-              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
-                Vas bien 🐾
+          <div style={{ marginBottom: 12 }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 10px',
+              background: goalStatus.onTrack ? 'var(--success-dim)' : 'var(--accent-dim)',
+              borderRadius: 8,
+            }}>
+              <span style={{ fontSize: 12 }}>{goalStatus.icon}</span>
+              <span style={{ fontSize: 12, color: goalStatus.color, fontWeight: 600 }}>
+                {goalStatus.label}
               </span>
+              {goalStatus.onTrack && (
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                  Vas bien 🐾
+                </span>
+              )}
+            </div>
+            {goalStatus.dailyTarget > 0 && (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 5, paddingLeft: 2 }}>
+                Estudiá ~{goalStatus.dailyTarget} tarjeta{goalStatus.dailyTarget !== 1 ? 's' : ''} hoy para llegar a tiempo
+              </div>
             )}
           </div>
         )}
