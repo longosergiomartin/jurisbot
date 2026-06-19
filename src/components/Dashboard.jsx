@@ -482,6 +482,13 @@ function getGoalStatus(goal, progress, total, learned) {
 function DeckCard({ deck, onStudy, onCompanion, onDelete }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const progress = deck.total > 0 ? Math.round((deck.learned / deck.total) * 100) : 0
+  const nextDue = deck.dueCount === 0
+    ? deck.cards
+        .filter(c => c.dueDate)
+        .map(c => new Date(c.dueDate))
+        .filter(d => d > new Date())
+        .sort((a, b) => a - b)[0] || null
+    : null
   const { gradient: topGradient } = getDomainColor(progress)
   const goalStatus = getGoalStatus(deck.goal, progress, deck.total, deck.learned)
 
@@ -554,6 +561,11 @@ function DeckCard({ deck, onStudy, onCompanion, onDelete }) {
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
               {deck.total} tarjetas · {progress}% dominado
+              {deck.createdAt && (
+                <span style={{ marginLeft: 6, opacity: 0.7 }}>
+                  · {new Date(deck.createdAt).toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })}
+                </span>
+              )}
             </div>
           </div>
           {deck.dueCount > 0 && (
@@ -615,6 +627,9 @@ function DeckCard({ deck, onStudy, onCompanion, onDelete }) {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
           <button
             onClick={() => onStudy(deck.id)}
+            title={deck.dueCount === 0 && nextDue
+              ? `Sin tarjetas para hoy — próxima revisión el ${nextDue.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })}`
+              : deck.dueCount === 0 ? 'Sin tarjetas para hoy' : ''}
             style={{
               background: deck.dueCount > 0 ? 'linear-gradient(135deg, var(--primary), var(--pink))' : 'rgba(255,255,255,0.05)',
               border: `1px solid ${deck.dueCount > 0 ? 'transparent' : 'var(--border)'}`,
@@ -632,7 +647,7 @@ function DeckCard({ deck, onStudy, onCompanion, onDelete }) {
               boxShadow: deck.dueCount > 0 ? '0 2px 10px var(--primary-glow)' : 'none',
             }}
           >
-            ⚡ Repasar
+            {deck.dueCount > 0 ? '⚡ Repasar' : '✓ Al día'}
           </button>
           <button
             onClick={e => { e.stopPropagation(); onCompanion(deck.id) }}
