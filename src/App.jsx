@@ -12,6 +12,7 @@ import { getDueCards } from './services/fsrs'
 import { getLevel } from './services/levels'
 import { supabase, isSupabaseEnabled } from './services/supabase'
 import { fetchProfile, fetchDecks, upsertProfile, upsertCards, migrateLocalToCloud } from './services/cloud'
+import { DEMO_DECK, DEMO_CARDS } from './data/demoCards'
 
 export default function App() {
   const [screen, setScreen] = useState('loading')
@@ -114,6 +115,18 @@ export default function App() {
     setScreen('upload')
   }
 
+  function handleTryExample(name) {
+    const u = storage.createUser(name)
+    setUser(u)
+    // Add the demo deck to storage so it appears in Dashboard after the session
+    const deck = { ...DEMO_DECK, cards: DEMO_CARDS, createdAt: new Date().toISOString() }
+    const updatedDecks = storage.addDeck(deck)
+    setDecks(updatedDecks)
+    setStudyCards(DEMO_CARDS)
+    setActiveDeckId(DEMO_DECK.id)
+    setScreen('study')
+  }
+
   function handleUploadReady(source) {
     setUploadSource(source)
     setScreen('processing')
@@ -186,7 +199,7 @@ export default function App() {
   return (
     <>
       {screen === 'welcome' && (
-        <Welcome onSetupComplete={handleSetupComplete} />
+        <Welcome onSetupComplete={handleSetupComplete} onTryExample={handleTryExample} />
       )}
       {screen === 'upload' && (
         <Upload
