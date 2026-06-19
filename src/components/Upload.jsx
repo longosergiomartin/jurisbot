@@ -17,6 +17,7 @@ export default function Upload({ onReady, onBack }) {
   const [cardCount, setCardCount] = useState(15)
   const [hasGoal, setHasGoal] = useState(false)
   const [targetDate, setTargetDate] = useState('')
+  const [chapterInfo, setChapterInfo] = useState({ enabled: false, current: '', total: '' })
   const fileRef = useRef()
 
   function getFileMeta(file) {
@@ -67,6 +68,9 @@ export default function Upload({ onReady, onBack }) {
       title: title.trim() || 'Sin título',
       cardCount,
       goal: hasGoal && targetDate ? { targetDate, setAt: new Date().toISOString() } : null,
+      chapter: chapterInfo.enabled && chapterInfo.current && chapterInfo.total
+        ? { current: Number(chapterInfo.current), total: Number(chapterInfo.total) }
+        : null,
     })
   }
 
@@ -118,6 +122,113 @@ export default function Upload({ onReady, onBack }) {
             onFocus={e => e.target.style.borderColor = 'var(--primary)'}
             onBlur={e => e.target.style.borderColor = 'var(--border)'}
           />
+        </div>
+
+        {/* Chapter section */}
+        <div style={{ marginBottom: 16 }}>
+          <button
+            onClick={() => setChapterInfo(v => ({ ...v, enabled: !v.enabled }))}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              background: chapterInfo.enabled ? 'var(--teal-dim)' : 'rgba(255,255,255,0.03)',
+              border: `1.5px solid ${chapterInfo.enabled ? 'rgba(34,211,238,0.35)' : 'var(--border)'}`,
+              borderRadius: 12,
+              padding: '12px 16px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              fontFamily: 'inherit',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <span style={{ fontSize: 18 }}>📖</span>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: 14, fontWeight: 600, color: chapterInfo.enabled ? 'var(--teal)' : 'var(--text-soft)' }}>
+                  Es parte de un curso/libro
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>
+                  Seguí tu progreso capítulo a capítulo
+                </div>
+              </div>
+            </div>
+            <div style={{
+              width: 40,
+              height: 22,
+              borderRadius: 11,
+              background: chapterInfo.enabled ? 'var(--teal)' : 'rgba(255,255,255,0.1)',
+              position: 'relative',
+              transition: 'background 0.2s',
+              flexShrink: 0,
+            }}>
+              <div style={{
+                width: 16,
+                height: 16,
+                borderRadius: '50%',
+                background: '#fff',
+                position: 'absolute',
+                top: 3,
+                left: chapterInfo.enabled ? 21 : 3,
+                transition: 'left 0.2s',
+              }} />
+            </div>
+          </button>
+
+          {chapterInfo.enabled && (
+            <div style={{ marginTop: 10, padding: '14px 16px', background: 'rgba(34,211,238,0.06)', border: '1px solid rgba(34,211,238,0.2)', borderRadius: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', display: 'block', marginBottom: 6 }}>
+                    Capítulo actual
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="3"
+                    value={chapterInfo.current}
+                    onChange={e => setChapterInfo(v => ({ ...v, current: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1.5px solid var(--border)',
+                      borderRadius: 10,
+                      padding: '10px 14px',
+                      fontSize: 14,
+                      outline: 'none',
+                      color: 'var(--text)',
+                    }}
+                    onFocus={e => e.target.style.borderColor = 'var(--teal)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  />
+                </div>
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', display: 'block', marginBottom: 6 }}>
+                    Total de capítulos
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    placeholder="10"
+                    value={chapterInfo.total}
+                    onChange={e => setChapterInfo(v => ({ ...v, total: e.target.value }))}
+                    style={{
+                      width: '100%',
+                      background: 'rgba(255,255,255,0.05)',
+                      border: '1.5px solid var(--border)',
+                      borderRadius: 10,
+                      padding: '10px 14px',
+                      fontSize: 14,
+                      outline: 'none',
+                      color: 'var(--text)',
+                    }}
+                    onFocus={e => e.target.style.borderColor = 'var(--teal)'}
+                    onBlur={e => e.target.style.borderColor = 'var(--border)'}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Text input */}
