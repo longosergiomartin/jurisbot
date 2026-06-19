@@ -49,13 +49,13 @@ export default function StudySession({ cards, deckId, onComplete }) {
     setPendingRating(null)
   }, [currentIndex])
 
-  async function fetchFeedback(q, correctAns, userAns) {
+  async function fetchFeedback(q, correctAns, userAns, isCorrect) {
     setLoadingFeedback(true)
     try {
       const res = await fetch('/api/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q, correctAnswer: correctAns, userAnswer: userAns }),
+        body: JSON.stringify({ question: q, correctAnswer: correctAns, userAnswer: userAns, isCorrect }),
       })
       const data = await res.json()
       setAiFeedback(data.feedback || null)
@@ -77,7 +77,7 @@ export default function StudySession({ cards, deckId, onComplete }) {
     setMcqResult(correct ? 'correct' : 'wrong')
     setRevealed(true)
     if (!correct) {
-      fetchFeedback(question, current.back || current.explanation, current.options[index])
+      fetchFeedback(question, current.back || current.explanation, current.options[index], false)
     }
   }
 

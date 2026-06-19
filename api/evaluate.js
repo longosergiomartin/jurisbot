@@ -1,24 +1,44 @@
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { question, correctAnswer, userAnswer } = req.body
+  const { question, correctAnswer, userAnswer, isCorrect } = req.body
 
   if (!question || !correctAnswer) {
     return res.status(400).json({ error: 'Faltan datos' })
   }
 
-  const prompt = `Eres Kuma, una shiba inu simpática y motivadora que actúa como tutora de IA. Evalúa la respuesta del estudiante y da feedback conciso.
+  // Two prompt branches: definitive wrong (isCorrect===false) vs. AI-evaluated (short answer)
+  const prompt = isCorrect === false
+    ? `Eres Kuma, tutora shiba inu. El estudiante respondió INCORRECTAMENTE a esta pregunta.
 
 Pregunta: ${question}
 Respuesta correcta: ${correctAnswer}
-Lo que respondió el estudiante: ${userAnswer || '(No escribió respuesta, solo vio la tarjeta)'}
+Lo que eligió el estudiante (INCORRECTO): ${userAnswer}
 
-Responde en JSON con este formato exacto:
-{
-  "feedback": "Mensaje de Kuma: máximo 2 oraciones, tono amigable y constructivo. Si no hay respuesta del estudiante, comenta algo interesante sobre el concepto que le ayude a recordarlo."
-}
+Reglas absolutas:
+- NUNCA uses palabras de elogio: "muy bien", "correcto", "excelente", "perfecto", "exacto", "¡sí!", "así es", "acertaste".
+- SIEMPRE menciona la respuesta correcta real en tu mensaje.
+- Ancla tu feedback al contenido de ESTA pregunta, no a otro concepto.
+- Máximo 2 oraciones. Tono empático: "Casi", "No exactamente", "Esta vez fue…"
 
-Solo JSON, sin texto adicional.`
+Responde SOLO con JSON válido:
+{"feedback": "Mensaje de Kuma (máximo 2 oraciones)"}`
+
+    : `Eres Kuma, tutora shiba inu. Evaluá la respuesta del estudiante y dá feedback preciso.
+
+Pregunta: ${question}
+Respuesta esperada: ${correctAnswer}
+Respuesta del estudiante: ${userAnswer || '(no escribió respuesta)'}
+
+Reglas:
+- Si la respuesta es incorrecta o incompleta: señalá el error con empatía y mencioná qué era lo correcto.
+- Si es correcta o muy cercana: felicitá brevemente y agregá un dato memorable sobre el concepto.
+- NUNCA felicites si la respuesta claramente no corresponde al concepto correcto.
+- Ancla tu feedback al contenido de ESTA pregunta específicamente.
+- Máximo 2 oraciones. Tono rioplatense informal.
+
+Responde SOLO con JSON válido:
+{"feedback": "Mensaje de Kuma"}`
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
@@ -49,7 +69,17 @@ Solo JSON, sin texto adicional.`
     }
 
     const parsed = JSON.parse(jsonMatch[0])
-    res.status(200).json({ feedback: parsed.feedback || null })
+    let feedback = parsed.feedback || null
+
+    // Safety net: if answer was wrong and model still returned praise, override it
+    if (isCorrect === false && feedback) {
+      const praisePattern = /\b(muy bien|excelente|correcto|perfecto|exacto|acertaste|¡sí|así es|genial|bravo)\b/i
+      if (praisePattern.test(feedback)) {
+        feedback = `No exactamente — la respuesta correcta era: "${correctAnswer}" 🐾`
+      }
+    }
+
+    res.status(200).json({ feedback })
   } catch (err) {
     console.error('Evaluate error:', err)
     res.status(200).json({ feedback: null })
