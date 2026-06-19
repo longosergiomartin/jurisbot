@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { scheduleCard } from '../services/fsrs'
 import SocraticSession from './SocraticSession'
+import PomodoroTimer from './PomodoroTimer'
 
 const RATING_CONFIG = [
   { value: 1, label: 'No lo sabía', emoji: '❌', color: 'var(--danger)', bg: 'var(--danger-dim)' },
@@ -125,6 +126,7 @@ export default function StudySession({ cards, deckId, onComplete }) {
 
   return (
     <>
+      <PomodoroTimer />
       {showSocratic && (
         <SocraticSession
           concept={question}
