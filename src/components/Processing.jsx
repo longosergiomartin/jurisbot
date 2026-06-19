@@ -70,6 +70,7 @@ export default function Processing({ source, onComplete, onError }) {
         id: deckId,
         title: source.title,
         createdAt: new Date().toISOString(),
+        goal: source.goal || null,
         cards,
       }
 

@@ -20,7 +20,7 @@ function getSessionEstimate(totalDue) {
   return '~8 min'
 }
 
-export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
+export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck }) {
   const deckStats = useMemo(() => {
     return decks.map(deck => {
       const due = getDueCards(deck.cards)
@@ -202,7 +202,7 @@ export default function Dashboard({ user, decks, onStudy, onNewDeck }) {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {deckStats.map(deck => (
-                <DeckCard key={deck.id} deck={deck} onStudy={onStudy} />
+                <DeckCard key={deck.id} deck={deck} onStudy={onStudy} onCompanion={onCompanion} />
               ))}
             </div>
           )}
@@ -228,9 +228,27 @@ function getDomainColor(progress) {
   return { color: '#34d399', gradient: 'linear-gradient(90deg, #34d399, #22d3ee)' }
 }
 
-function DeckCard({ deck, onStudy }) {
+function getGoalStatus(goal, progress) {
+  if (!goal?.targetDate) return null
+  const today = new Date()
+  const target = new Date(goal.targetDate)
+  const daysLeft = Math.ceil((target - today) / (1000 * 60 * 60 * 24))
+  if (daysLeft < 0) return { label: 'Fecha vencida', color: 'var(--danger)', icon: '⚠️', daysLeft: 0 }
+  const expectedProgress = Math.max(0, 100 - (daysLeft / 30) * 100)
+  const onTrack = progress >= expectedProgress - 10
+  return {
+    daysLeft,
+    onTrack,
+    label: daysLeft === 0 ? '¡Hoy es el día!' : `${daysLeft} día${daysLeft !== 1 ? 's' : ''} restantes`,
+    color: onTrack ? 'var(--success)' : 'var(--accent)',
+    icon: onTrack ? '🟢' : '🟡',
+  }
+}
+
+function DeckCard({ deck, onStudy, onCompanion }) {
   const progress = deck.total > 0 ? Math.round((deck.learned / deck.total) * 100) : 0
   const { gradient: topGradient } = getDomainColor(progress)
+  const goalStatus = getGoalStatus(deck.goal, progress)
 
   return (
     <div
@@ -239,10 +257,8 @@ function DeckCard({ deck, onStudy }) {
         border: `1px solid ${deck.dueCount > 0 ? 'rgba(124,58,237,0.3)' : 'var(--border)'}`,
         borderRadius: 16,
         overflow: 'hidden',
-        cursor: 'pointer',
         transition: 'all 0.2s',
       }}
-      onClick={() => deck.dueCount > 0 && onStudy(deck.id)}
       onMouseEnter={e => e.currentTarget.style.background = 'var(--card-hover)'}
       onMouseLeave={e => e.currentTarget.style.background = 'var(--card)'}
     >
@@ -250,6 +266,7 @@ function DeckCard({ deck, onStudy }) {
       <div style={{ height: 3, background: topGradient, width: '100%' }} />
 
       <div style={{ padding: '14px 16px' }}>
+        {/* Title row */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -279,8 +296,78 @@ function DeckCard({ deck, onStudy }) {
             <span style={{ fontSize: 16 }}>✅</span>
           )}
         </div>
-        <div className="progress-bar">
+
+        {/* Progress bar */}
+        <div className="progress-bar" style={{ marginBottom: goalStatus ? 10 : 12 }}>
           <div className="progress-fill" style={{ width: `${progress}%` }} />
+        </div>
+
+        {/* Goal status */}
+        {goalStatus && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 6,
+            padding: '6px 10px',
+            background: goalStatus.onTrack ? 'var(--success-dim)' : 'var(--accent-dim)',
+            borderRadius: 8,
+            marginBottom: 12,
+          }}>
+            <span style={{ fontSize: 12 }}>{goalStatus.icon}</span>
+            <span style={{ fontSize: 12, color: goalStatus.color, fontWeight: 600 }}>
+              {goalStatus.label}
+            </span>
+            {goalStatus.onTrack && (
+              <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 'auto' }}>
+                Vas bien 🐾
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+          <button
+            onClick={() => deck.dueCount > 0 ? onStudy(deck.id) : onStudy(deck.id)}
+            style={{
+              background: deck.dueCount > 0 ? 'linear-gradient(135deg, var(--primary), var(--pink))' : 'rgba(255,255,255,0.05)',
+              border: `1px solid ${deck.dueCount > 0 ? 'transparent' : 'var(--border)'}`,
+              borderRadius: 10,
+              padding: '9px 12px',
+              color: deck.dueCount > 0 ? '#fff' : 'var(--text-soft)',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+              boxShadow: deck.dueCount > 0 ? '0 2px 10px var(--primary-glow)' : 'none',
+            }}
+          >
+            ⚡ Examen
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onCompanion(deck.id) }}
+            style={{
+              background: 'var(--teal-dim)',
+              border: '1px solid rgba(34,211,238,0.25)',
+              borderRadius: 10,
+              padding: '9px 12px',
+              color: 'var(--teal)',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 5,
+            }}
+          >
+            🐶 Charlar
+          </button>
         </div>
       </div>
     </div>

@@ -260,14 +260,14 @@ export default function StudySession({ cards, deckId, onComplete }) {
             </div>
           )}
 
-          {/* Feynman button (flashcard only, after reveal) */}
+          {/* Explain-to-Kuma button (flashcard only, after reveal) */}
           {current.type === 'flashcard' && revealed && (
             <button
               className="btn btn-ghost"
               onClick={() => setShowSocratic(true)}
               style={{ width: '100%', marginBottom: 12, fontSize: 14 }}
             >
-              🐶 Practicar explicándoselo a Kuma
+              🐶 ¿Lo podés explicar con tus palabras?
             </button>
           )}
 
