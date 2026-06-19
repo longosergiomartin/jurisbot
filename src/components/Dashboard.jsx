@@ -490,7 +490,7 @@ function DeckCard({ deck, onStudy, onCompanion }) {
               boxShadow: deck.dueCount > 0 ? '0 2px 10px var(--primary-glow)' : 'none',
             }}
           >
-            ⚡ Examen
+            ⚡ Repasar
           </button>
           <button
             onClick={e => { e.stopPropagation(); onCompanion(deck.id) }}
