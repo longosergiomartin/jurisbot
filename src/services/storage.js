@@ -35,6 +35,10 @@ export function createUser(name) {
   return user
 }
 
+export function saveUser(user) {
+  save(KEYS.USER, user)
+}
+
 export function updateStreak(user) {
   const today = new Date().toISOString().slice(0, 10)
   const last = user.lastStudyDate
@@ -62,6 +66,10 @@ export function addXP(user, amount) {
 // Decks
 export function getDecks() {
   return load(KEYS.DECKS, [])
+}
+
+export function saveDecks(decks) {
+  save(KEYS.DECKS, decks)
 }
 
 export function addDeck(deck) {

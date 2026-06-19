@@ -21,7 +21,7 @@ function getSessionEstimate(totalDue) {
   return '~8 min'
 }
 
-export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck }) {
+export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck, authUser, syncing, lastSynced, onShowAuth, onSync }) {
   const deckStats = useMemo(() => {
     return decks.map(deck => {
       const due = getDueCards(deck.cards)
@@ -143,6 +143,47 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
                 }}
               >
                 🔔
+              </button>
+            )}
+            {/* Cloud sync button */}
+            {authUser ? (
+              <button
+                onClick={onSync}
+                disabled={syncing}
+                title={lastSynced ? `Última sincronización: ${lastSynced.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : 'Sincronizar'}
+                style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 20,
+                  padding: '6px 10px',
+                  fontSize: 14,
+                  cursor: syncing ? 'default' : 'pointer',
+                  color: 'var(--success)',
+                  fontFamily: 'inherit',
+                  lineHeight: 1,
+                  opacity: syncing ? 0.6 : 1,
+                  animation: syncing ? 'spin 1s linear infinite' : 'none',
+                }}
+              >
+                ☁️
+              </button>
+            ) : (
+              <button
+                onClick={onShowAuth}
+                title="Sincronizar en la nube"
+                style={{
+                  background: 'var(--card)',
+                  border: '1px solid var(--border)',
+                  borderRadius: 20,
+                  padding: '6px 10px',
+                  fontSize: 14,
+                  cursor: 'pointer',
+                  color: 'var(--text-muted)',
+                  fontFamily: 'inherit',
+                  lineHeight: 1,
+                }}
+              >
+                ☁️
               </button>
             )}
             <div className="streak-badge">

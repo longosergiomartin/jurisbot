@@ -6,8 +6,11 @@ import Dashboard from './components/Dashboard'
 import StudySession from './components/StudySession'
 import SessionComplete from './components/SessionComplete'
 import CompanionChat from './components/CompanionChat'
+import Auth from './components/Auth'
 import * as storage from './services/storage'
 import { getDueCards } from './services/fsrs'
+import { supabase, isSupabaseEnabled } from './services/supabase'
+import { fetchProfile, fetchDecks, upsertProfile, upsertCards, migrateLocalToCloud } from './services/cloud'
 
 export default function App() {
   const [screen, setScreen] = useState('loading')
@@ -18,6 +21,10 @@ export default function App() {
   const [activeDeckId, setActiveDeckId] = useState(null)
   const [sessionResults, setSessionResults] = useState(null)
   const [companionDeckId, setCompanionDeckId] = useState(null)
+  const [authUser, setAuthUser] = useState(null)
+  const [showAuth, setShowAuth] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [lastSynced, setLastSynced] = useState(null)
 
   useEffect(() => {
     const u = storage.getUser()
@@ -25,7 +32,80 @@ export default function App() {
     setUser(u)
     setDecks(d)
     setScreen(u ? 'dashboard' : 'welcome')
-  }, [])
+
+    if (!isSupabaseEnabled()) return
+
+    // Check existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        setAuthUser(session.user)
+        syncFromCloud(session.user, u, d)
+      }
+    })
+
+    // Listen for auth changes (magic link callback)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      const su = session?.user ?? null
+      setAuthUser(su)
+      if (su) {
+        const localUser = storage.getUser()
+        const localDecks = storage.getDecks()
+        syncFromCloud(su, localUser, localDecks)
+      }
+    })
+
+    return () => subscription.unsubscribe()
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function syncFromCloud(supabaseUser, localUser, localDecks) {
+    setSyncing(true)
+    try {
+      const cloudProfile = await fetchProfile(supabaseUser.id)
+      const cloudDecks = await fetchDecks(supabaseUser.id)
+
+      if (!cloudProfile && !cloudDecks?.length) {
+        // First login — migrate local data
+        await migrateLocalToCloud(supabaseUser.id, localUser, localDecks)
+        setLastSynced(new Date())
+      } else {
+        // Load cloud data into app
+        if (cloudProfile) {
+          const merged = {
+            ...(localUser || {}),
+            name: cloudProfile.name || localUser?.name || 'Estudiante',
+            streak: cloudProfile.streak ?? localUser?.streak ?? 0,
+            lastStudyDate: cloudProfile.last_study_date || localUser?.lastStudyDate || null,
+            totalSessions: cloudProfile.total_sessions ?? localUser?.totalSessions ?? 0,
+            xp: cloudProfile.xp ?? localUser?.xp ?? 0,
+          }
+          storage.saveUser(merged)
+          setUser(merged)
+        }
+        if (cloudDecks?.length) {
+          storage.saveDecks(cloudDecks)
+          setDecks(cloudDecks)
+        }
+        setLastSynced(new Date())
+      }
+    } catch (err) {
+      console.error('Sync error:', err)
+    }
+    setSyncing(false)
+  }
+
+  async function pushToCloud() {
+    if (!authUser || syncing) return
+    setSyncing(true)
+    try {
+      const currentUser = storage.getUser()
+      const currentDecks = storage.getDecks()
+      await migrateLocalToCloud(authUser.id, currentUser, currentDecks)
+      setLastSynced(new Date())
+    } catch (err) {
+      console.error('Push sync error:', err)
+    }
+    setSyncing(false)
+  }
 
   function handleSetupComplete(name) {
     const u = storage.createUser(name)
@@ -57,7 +137,7 @@ export default function App() {
     setScreen('study')
   }
 
-  function handleSessionComplete(results) {
+  async function handleSessionComplete(results) {
     const updatedDecks = storage.updateCards(activeDeckId, results.updatedCards)
     setDecks(updatedDecks)
     const updatedUser = storage.updateStreak(user)
@@ -65,6 +145,17 @@ export default function App() {
     setUser(userWithXP)
     setSessionResults({ ...results, xpEarned: results.xpEarned })
     setScreen('complete')
+
+    // Sync updated cards + profile to cloud in background
+    if (authUser) {
+      try {
+        await upsertCards(authUser.id, activeDeckId, results.updatedCards)
+        await upsertProfile(authUser.id, userWithXP)
+        setLastSynced(new Date())
+      } catch (err) {
+        console.error('Post-session sync error:', err)
+      }
+    }
   }
 
   function handleSessionDone() {
@@ -110,6 +201,11 @@ export default function App() {
           onStudy={handleStudyDeck}
           onCompanion={handleOpenCompanion}
           onNewDeck={() => setScreen('upload')}
+          authUser={authUser}
+          syncing={syncing}
+          lastSynced={lastSynced}
+          onShowAuth={() => setShowAuth(true)}
+          onSync={pushToCloud}
         />
       )}
       {screen === 'study' && (
@@ -131,6 +227,9 @@ export default function App() {
           deck={decks.find(d => d.id === companionDeckId)}
           onClose={() => setScreen('dashboard')}
         />
+      )}
+      {showAuth && isSupabaseEnabled() && (
+        <Auth onClose={() => setShowAuth(false)} />
       )}
     </>
   )
