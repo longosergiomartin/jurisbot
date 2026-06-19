@@ -9,6 +9,7 @@ import CompanionChat from './components/CompanionChat'
 import Auth from './components/Auth'
 import * as storage from './services/storage'
 import { getDueCards } from './services/fsrs'
+import { getLevel } from './services/levels'
 import { supabase, isSupabaseEnabled } from './services/supabase'
 import { fetchProfile, fetchDecks, upsertProfile, upsertCards, migrateLocalToCloud } from './services/cloud'
 
@@ -140,10 +141,16 @@ export default function App() {
   async function handleSessionComplete(results) {
     const updatedDecks = storage.updateCards(activeDeckId, results.updatedCards)
     setDecks(updatedDecks)
-    const updatedUser = storage.updateStreak(user)
+
+    const levelBefore = getLevel(user.xp)
+    const streakResult = storage.updateStreak(user)
+    const { shieldUsed, ...updatedUser } = streakResult
     const userWithXP = storage.addXP(updatedUser, results.xpEarned)
+    const levelAfter = getLevel(userWithXP.xp)
     setUser(userWithXP)
-    setSessionResults({ ...results, xpEarned: results.xpEarned })
+
+    const levelUp = levelAfter.level > levelBefore.level ? levelAfter : null
+    setSessionResults({ ...results, xpEarned: results.xpEarned, levelUp, shieldUsed })
     setScreen('complete')
 
     // Sync updated cards + profile to cloud in background

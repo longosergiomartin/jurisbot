@@ -1,3 +1,5 @@
+import { getLevel } from '../services/levels'
+
 const CONFETTI_PIECES = [
   { color: '#8b5cf6', left: '10%', delay: '0s',   duration: '1.1s' },
   { color: '#f43f5e', left: '25%', delay: '0.15s', duration: '1.3s' },
@@ -8,15 +10,23 @@ const CONFETTI_PIECES = [
   { color: '#a78bfa', left: '92%', delay: '0.08s', duration: '1.3s' },
 ]
 
+const STREAK_MILESTONES = [7, 14, 30, 60, 100, 365]
+
 export default function SessionComplete({ results, user, onDone }) {
-  const { correct, wrong, total, timeSeconds, xpEarned } = results
+  const { correct, wrong, total, timeSeconds, xpEarned, levelUp, shieldUsed } = results
 
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0
   const mins = Math.floor(timeSeconds / 60)
   const secs = timeSeconds % 60
   const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`
 
+  const levelInfo = getLevel(user.xp)
+  const streakMilestone = STREAK_MILESTONES.includes(user.streak) ? user.streak : null
+  const showConfetti = accuracy >= 80 || !!levelUp || !!streakMilestone
+
   function getMessage() {
+    if (levelUp) return `¡Subiste al nivel ${levelUp.level}! ${levelUp.emoji} ${levelUp.name}. Seguí así.`
+    if (streakMilestone) return `¡${streakMilestone} días seguidos! Eso es disciplina de verdad. 🐾`
     if (accuracy >= 90) return '¡Dominio impresionante! Estás construyendo memorias de largo plazo.'
     if (accuracy >= 70) return '¡Muy bien! Las tarjetas difíciles volverán mañana para reforzarse.'
     if (accuracy >= 50) return 'Buen trabajo. La repetición espaciada hará su magia con el tiempo.'
@@ -26,8 +36,7 @@ export default function SessionComplete({ results, user, onDone }) {
   return (
     <div className="screen" style={{ justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
 
-      {/* Confetti animation for accuracy >= 80% */}
-      {accuracy >= 80 && CONFETTI_PIECES.map((p, i) => (
+      {showConfetti && CONFETTI_PIECES.map((p, i) => (
         <div
           key={i}
           className="confetti-piece"
@@ -48,20 +57,58 @@ export default function SessionComplete({ results, user, onDone }) {
 
       <div className="container animate-up" style={{ textAlign: 'center', maxWidth: 400 }}>
 
-        {/* Celebration */}
+        {/* Celebration emoji */}
         <div style={{ fontSize: 72, marginBottom: 12, animation: 'popIn 0.5s cubic-bezier(0.34,1.56,0.64,1) forwards' }}>
-          {accuracy >= 80 ? '🎉' : accuracy >= 60 ? '💪' : '🧠'}
+          {levelUp ? levelUp.emoji : streakMilestone ? '🔥' : accuracy >= 80 ? '🎉' : accuracy >= 60 ? '💪' : '🧠'}
         </div>
+
+        {/* Level-up banner */}
+        {levelUp && (
+          <div
+            className="animate-pop"
+            style={{
+              background: 'linear-gradient(135deg, rgba(251,191,36,0.2) 0%, rgba(139,92,246,0.2) 100%)',
+              border: '1.5px solid rgba(251,191,36,0.5)',
+              borderRadius: 16,
+              padding: '12px 20px',
+              marginBottom: 16,
+              fontSize: 15,
+              fontWeight: 700,
+              color: 'var(--accent)',
+            }}
+          >
+            ⬆️ ¡Nivel {levelUp.level} desbloqueado! — {levelUp.name}
+          </div>
+        )}
+
+        {/* Streak milestone banner */}
+        {streakMilestone && !levelUp && (
+          <div
+            className="animate-pop"
+            style={{
+              background: 'linear-gradient(135deg, rgba(251,146,60,0.2) 0%, rgba(239,68,68,0.2) 100%)',
+              border: '1.5px solid rgba(251,146,60,0.5)',
+              borderRadius: 16,
+              padding: '12px 20px',
+              marginBottom: 16,
+              fontSize: 15,
+              fontWeight: 700,
+              color: '#fb923c',
+            }}
+          >
+            🔥 ¡{streakMilestone} días de racha!
+          </div>
+        )}
 
         <h2 style={{ fontSize: 26, fontWeight: 800, marginBottom: 6 }}>
           ¡Sesión completada!
         </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 28 }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: 14, marginBottom: 24 }}>
           {timeStr} de estudio enfocado
         </p>
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 24 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 20 }}>
           {[
             { label: 'Correctas', value: correct, icon: '✅', color: 'var(--success)', bg: 'var(--success-dim)', border: 'rgba(52,211,153,0.2)' },
             { label: 'Precisión', value: `${accuracy}%`, icon: '🎯', color: accuracy >= 70 ? 'var(--success)' : 'var(--accent)', bg: accuracy >= 70 ? 'var(--success-dim)' : 'var(--accent-dim)', border: accuracy >= 70 ? 'rgba(52,211,153,0.2)' : 'rgba(251,191,36,0.2)' },
@@ -75,15 +122,70 @@ export default function SessionComplete({ results, user, onDone }) {
           ))}
         </div>
 
-        {/* Streak info */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
-          <div className="streak-badge">
-            🔥 Racha: {user.streak} día{user.streak !== 1 ? 's' : ''}
+        {/* XP level progress bar */}
+        <div
+          style={{
+            background: 'var(--card)',
+            border: '1px solid var(--border)',
+            borderRadius: 14,
+            padding: '14px 16px',
+            marginBottom: 16,
+            textAlign: 'left',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)' }}>
+              {levelInfo.emoji} Nv.{levelInfo.level} {levelInfo.name}
+            </span>
+            {levelInfo.next && (
+              <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                {levelInfo.xpToNext} XP para Nv.{levelInfo.next.level}
+              </span>
+            )}
+          </div>
+          <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+            <div
+              style={{
+                height: '100%',
+                width: `${levelInfo.progress}%`,
+                background: 'linear-gradient(90deg, var(--primary) 0%, var(--accent) 100%)',
+                borderRadius: 3,
+                transition: 'width 0.8s ease',
+              }}
+            />
           </div>
         </div>
 
-        {/* Kai message */}
-        <div className="kai-bubble" style={{ marginBottom: 28, textAlign: 'left' }}>
+        {/* Streak + shield */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, marginBottom: 16 }}>
+          <div className="streak-badge">
+            🔥 Racha: {user.streak} día{user.streak !== 1 ? 's' : ''}
+          </div>
+          {(user.streakShields ?? 0) > 0 && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 4,
+              background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)',
+              borderRadius: 20, padding: '4px 10px', fontSize: 13,
+              color: 'var(--teal)', fontWeight: 600,
+            }}>
+              🛡️ ×{user.streakShields}
+            </div>
+          )}
+        </div>
+
+        {/* Shield-used notification */}
+        {shieldUsed && (
+          <div style={{
+            background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)',
+            borderRadius: 12, padding: '11px 14px', marginBottom: 14,
+            fontSize: 13, color: 'var(--teal)', textAlign: 'left',
+          }}>
+            🛡️ Tu <strong>escudo de racha</strong> absorbió el día de ayer. Tu racha se mantiene intacta.
+          </div>
+        )}
+
+        {/* Kuma message */}
+        <div className="kai-bubble" style={{ marginBottom: 24, textAlign: 'left' }}>
           <span className="kai-avatar">🐶</span>
           <div className="kai-text">{getMessage()}</div>
         </div>
@@ -91,7 +193,7 @@ export default function SessionComplete({ results, user, onDone }) {
         {/* FSRS info */}
         {wrong > 0 && (
           <div style={{ background: 'rgba(124,58,237,0.08)', border: '1px solid rgba(124,58,237,0.2)', borderRadius: 12, padding: '12px 16px', marginBottom: 20, fontSize: 13, color: 'var(--primary-light)', textAlign: 'left' }}>
-            🧠 Las <strong>{wrong} tarjeta{wrong !== 1 ? 's' : ''}</strong> que fallaste fueron reprogramadas automáticamente para reforzarlas. El algoritmo FSRS las mostrará justo antes de que las olvides.
+            🧠 Las <strong>{wrong} tarjeta{wrong !== 1 ? 's' : ''}</strong> que fallaste fueron reprogramadas automáticamente para reforzarlas.
           </div>
         )}
 

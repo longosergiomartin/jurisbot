@@ -1,5 +1,6 @@
 import { useMemo, useEffect, useState } from 'react'
 import { getDueCards } from '../services/fsrs'
+import { getLevel } from '../services/levels'
 import WeeklyCalendar from './WeeklyCalendar'
 import { requestNotificationPermission, showReminderIfDue } from '../services/notifications'
 
@@ -186,8 +187,23 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
                 ☁️
               </button>
             )}
-            <div className="streak-badge">
-              🔥 {user.streak} {user.streak === 1 ? 'día' : 'días'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div className="streak-badge">
+                🔥 {user.streak} {user.streak === 1 ? 'día' : 'días'}
+              </div>
+              {(user.streakShields ?? 0) > 0 && (
+                <div
+                  title={`${user.streakShields} escudo${user.streakShields > 1 ? 's' : ''} de racha disponible${user.streakShields > 1 ? 's' : ''}`}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 3,
+                    background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)',
+                    borderRadius: 20, padding: '4px 8px', fontSize: 12,
+                    color: 'var(--teal)', fontWeight: 700, cursor: 'default',
+                  }}
+                >
+                  🛡️{user.streakShields > 1 ? ` ×${user.streakShields}` : ''}
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -211,19 +227,29 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
               iconBg: 'var(--success-dim)',
               borderColor: 'rgba(52,211,153,0.15)',
             },
-            {
-              label: 'XP total',
-              value: user.xp,
-              icon: '⭐',
-              color: 'var(--accent)',
-              iconBg: 'var(--accent-dim)',
-              borderColor: 'rgba(251,191,36,0.2)',
-            },
-          ].map(({ label, value, icon, color, iconBg, borderColor }) => (
+            (() => {
+              const lvl = getLevel(user.xp)
+              return {
+                label: `Nv.${lvl.level} ${lvl.name}`,
+                value: lvl.emoji,
+                icon: lvl.emoji,
+                color: 'var(--accent)',
+                iconBg: 'var(--accent-dim)',
+                borderColor: 'rgba(251,191,36,0.2)',
+                isLevel: true,
+                lvl,
+              }
+            })(),
+          ].map(({ label, value, icon, color, iconBg, borderColor, isLevel, lvl }) => (
             <div key={label} style={{ background: 'var(--card)', border: `1px solid ${borderColor}`, borderRadius: 14, padding: '14px 12px', textAlign: 'center' }}>
               <div style={{ fontSize: 26, marginBottom: 6, width: 44, height: 44, background: iconBg, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 8px' }}>{icon}</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color }}>{value}</div>
-              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{label}</div>
+              <div style={{ fontSize: isLevel ? 22 : 24, fontWeight: 800, color }}>{isLevel ? `Nv.${lvl.level}` : value}</div>
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>{isLevel ? lvl.name : label}</div>
+              {isLevel && lvl.next && (
+                <div style={{ marginTop: 6, height: 3, background: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' }}>
+                  <div style={{ height: '100%', width: `${lvl.progress}%`, background: 'linear-gradient(90deg, var(--primary), var(--accent))', borderRadius: 2 }} />
+                </div>
+              )}
             </div>
           ))}
         </div>

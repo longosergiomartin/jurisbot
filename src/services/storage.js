@@ -29,6 +29,8 @@ export function createUser(name) {
     totalCards: 0,
     totalSessions: 0,
     xp: 0,
+    streakShields: 1,
+    lastShieldWeek: null,
     createdAt: new Date().toISOString(),
   }
   save(KEYS.USER, user)
@@ -41,20 +43,40 @@ export function saveUser(user) {
 
 export function updateStreak(user) {
   const today = new Date().toISOString().slice(0, 10)
+  const thisWeek = getISOWeek(today)
   const last = user.lastStudyDate
 
+  // Refresh weekly shield (max 2)
+  let shields = user.streakShields ?? 1
+  const lastShieldWeek = user.lastShieldWeek ?? null
+  if (lastShieldWeek !== thisWeek && shields < 2) {
+    shields = Math.min(shields + 1, 2)
+  }
+
   let streak = user.streak
+  let shieldUsed = false
   if (last === today) {
     // Already studied today, no change
   } else if (last === getPreviousDay(today)) {
     streak++
+  } else if (last === getPreviousDay(getPreviousDay(today)) && shields > 0) {
+    // Missed exactly 1 day — shield absorbs the miss
+    shields--
+    shieldUsed = true
   } else {
     streak = 1
   }
 
-  const updated = { ...user, streak, lastStudyDate: today, totalSessions: user.totalSessions + 1 }
+  const updated = {
+    ...user,
+    streak,
+    lastStudyDate: today,
+    totalSessions: user.totalSessions + 1,
+    streakShields: shields,
+    lastShieldWeek: thisWeek,
+  }
   save(KEYS.USER, updated)
-  return updated
+  return { ...updated, shieldUsed }
 }
 
 export function addXP(user, amount) {
@@ -100,4 +122,13 @@ function getPreviousDay(dateStr) {
   const d = new Date(dateStr)
   d.setDate(d.getDate() - 1)
   return d.toISOString().slice(0, 10)
+}
+
+function getISOWeek(dateStr) {
+  const d = new Date(dateStr)
+  d.setHours(0, 0, 0, 0)
+  d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7)
+  const week1 = new Date(d.getFullYear(), 0, 4)
+  const weekNum = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)
+  return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`
 }
