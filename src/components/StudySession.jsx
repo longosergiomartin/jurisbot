@@ -49,13 +49,13 @@ export default function StudySession({ cards, deckId, onComplete }) {
     setPendingRating(null)
   }, [currentIndex])
 
-  async function fetchFeedback(q, correctAns, userAns) {
+  async function fetchFeedback(q, correctAns, userAns, isCorrect) {
     setLoadingFeedback(true)
     try {
       const res = await fetch('/api/evaluate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q, correctAnswer: correctAns, userAnswer: userAns }),
+        body: JSON.stringify({ question: q, correctAnswer: correctAns, userAnswer: userAns, isCorrect }),
       })
       const data = await res.json()
       setAiFeedback(data.feedback || null)
@@ -77,7 +77,7 @@ export default function StudySession({ cards, deckId, onComplete }) {
     setMcqResult(correct ? 'correct' : 'wrong')
     setRevealed(true)
     if (!correct) {
-      fetchFeedback(question, current.back || current.explanation, current.options[index])
+      fetchFeedback(question, current.back || current.explanation, current.options[index], false)
     }
   }
 
@@ -338,14 +338,52 @@ export default function StudySession({ cards, deckId, onComplete }) {
             </div>
           )}
 
-          {/* Rating buttons — MCQ */}
-          {current.type === 'mcq' && mcqResult && (
+          {/* Rating — MCQ incorrecto: auto-rating Again, botón único para continuar */}
+          {current.type === 'mcq' && mcqResult === 'wrong' && (
+            <div className="animate-pop" style={{ marginTop: 8 }}>
+              <div style={{
+                background: 'var(--danger-dim)',
+                border: '1px solid rgba(239,68,68,0.35)',
+                borderRadius: 12,
+                padding: '10px 14px',
+                marginBottom: 10,
+                display: 'flex', alignItems: 'center', gap: 8,
+              }}>
+                <span style={{ fontSize: 16 }}>📅</span>
+                <p style={{ fontSize: 12, color: 'var(--danger)', fontWeight: 600, margin: 0 }}>
+                  Kuma reprogramó esta tarjeta para refuerzo pronto
+                </p>
+              </div>
+              <button
+                onClick={() => selectRating(1)}
+                disabled={pendingRating !== null}
+                style={{
+                  width: '100%',
+                  background: pendingRating !== null ? 'rgba(239,68,68,0.18)' : 'var(--danger)',
+                  border: 'none',
+                  borderRadius: 14,
+                  padding: '13px 8px',
+                  color: pendingRating !== null ? 'var(--danger)' : '#fff',
+                  fontWeight: 700,
+                  fontSize: 14,
+                  cursor: pendingRating !== null ? 'default' : 'pointer',
+                  opacity: pendingRating !== null ? 0.6 : 1,
+                  transition: 'all 0.2s',
+                }}
+              >
+                {pendingRating !== null ? '✓ Programado' : 'Continuar →'}
+              </button>
+            </div>
+          )}
+
+          {/* Rating — MCQ correcto: solo Bien / Fácil */}
+          {current.type === 'mcq' && mcqResult === 'correct' && (
             <div className="animate-pop" style={{ marginTop: 8 }}>
               <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>
-                ¿Qué tan fácil te resultó?
+                ¿Te costó pensarlo?
               </p>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                {RATING_CONFIG.map(r => {
+                {RATING_CONFIG.filter(r => r.value === 3 || r.value === 4).map(r => {
                   const isSelected = pendingRating === r.value
                   const isDimmed = pendingRating !== null && !isSelected
                   return (

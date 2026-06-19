@@ -1,12 +1,13 @@
 import { useState } from 'react'
 
-export default function Welcome({ onSetupComplete }) {
+export default function Welcome({ onSetupComplete, onTryExample }) {
   const [name, setName] = useState('')
   const [focused, setFocused] = useState(false)
 
-  function handleSubmit(e) {
+  const trimmed = name.trim()
+
+  function handleUpload(e) {
     e.preventDefault()
-    const trimmed = name.trim()
     if (trimmed) onSetupComplete(trimmed)
   }
 
@@ -16,7 +17,6 @@ export default function Welcome({ onSetupComplete }) {
 
         {/* Logo */}
         <div style={{ marginBottom: 32 }}>
-          {/* Kuma with circular gradient background */}
           <div style={{
             width: 96,
             height: 96,
@@ -74,7 +74,7 @@ export default function Welcome({ onSetupComplete }) {
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <form onSubmit={handleUpload} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <input
               type="text"
               value={name}
@@ -95,14 +95,39 @@ export default function Welcome({ onSetupComplete }) {
                 width: '100%',
               }}
             />
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={!name.trim()}
-              style={{ width: '100%', padding: '14px', fontSize: 16 }}
-            >
-              Comenzar →
-            </button>
+
+            {/* Two-path CTAs — only shown when name is filled */}
+            {trimmed ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => onTryExample(trimmed)}
+                  className="btn btn-primary"
+                  style={{ width: '100%', padding: '14px', fontSize: 16 }}
+                >
+                  🧠 Probar con un ejemplo
+                </button>
+                <button
+                  type="submit"
+                  className="btn btn-ghost"
+                  style={{ width: '100%', padding: '13px', fontSize: 15 }}
+                >
+                  📄 Subir mi material →
+                </button>
+                <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', margin: 0 }}>
+                  El ejemplo muestra los 3 tipos de tarjeta — sin subir nada
+                </p>
+              </>
+            ) : (
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled
+                style={{ width: '100%', padding: '14px', fontSize: 16 }}
+              >
+                Comenzar →
+              </button>
+            )}
           </form>
         </div>
 
