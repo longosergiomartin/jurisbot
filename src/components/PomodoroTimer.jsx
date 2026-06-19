@@ -31,10 +31,10 @@ function fmt(s) {
   return `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`
 }
 
-export default function PomodoroTimer() {
+export default function PomodoroTimer({ autoStart = false }) {
   const [mode, setMode] = useState('work')
   const [secondsLeft, setSecondsLeft] = useState(WORK)
-  const [running, setRunning] = useState(true)
+  const [running, setRunning] = useState(autoStart)
   const [pomodoroCount, setPomodoroCount] = useState(0)
   const [showBreak, setShowBreak] = useState(false)
   const [expanded, setExpanded] = useState(false)

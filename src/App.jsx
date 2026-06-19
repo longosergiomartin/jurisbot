@@ -3,6 +3,7 @@ import Welcome from './components/Welcome'
 import Upload from './components/Upload'
 import Processing from './components/Processing'
 import Dashboard from './components/Dashboard'
+import CardPreview from './components/CardPreview'
 import StudySession from './components/StudySession'
 import SessionComplete from './components/SessionComplete'
 import CompanionChat from './components/CompanionChat'
@@ -135,11 +136,32 @@ export default function App() {
   function handleDeckCreated(deck) {
     const updatedDecks = storage.addDeck(deck)
     setDecks(updatedDecks)
-    // Start studying immediately after generating
-    const cards = deck.cards.slice(0, Math.min(deck.cards.length, 20))
-    setStudyCards(cards)
     setActiveDeckId(deck.id)
+    setScreen('preview')
+  }
+
+  function handlePreviewStart(modifiedCards) {
+    const updatedDecks = decks.map(d =>
+      d.id === activeDeckId ? { ...d, cards: modifiedCards, cardCount: modifiedCards.length } : d
+    )
+    storage.saveDecks(updatedDecks)
+    setDecks(updatedDecks)
+    const studySet = modifiedCards.slice(0, Math.min(modifiedCards.length, 20))
+    setStudyCards(studySet)
     setScreen('study')
+  }
+
+  function handleStudyExit(partialUpdatedCards) {
+    if (partialUpdatedCards.length > 0) {
+      const updatedDecks = storage.updateCards(activeDeckId, partialUpdatedCards)
+      setDecks(updatedDecks)
+    }
+    setScreen('dashboard')
+  }
+
+  function handleDeleteDeck(deckId) {
+    const updatedDecks = storage.deleteDeck(deckId)
+    setDecks(updatedDecks)
   }
 
   function handleStudyDeck(deckId) {
@@ -214,6 +236,13 @@ export default function App() {
           onError={() => setScreen('upload')}
         />
       )}
+      {screen === 'preview' && activeDeckId && (
+        <CardPreview
+          deck={decks.find(d => d.id === activeDeckId)}
+          onStart={handlePreviewStart}
+          onBack={() => setScreen('upload')}
+        />
+      )}
       {screen === 'dashboard' && user && (
         <Dashboard
           user={user}
@@ -226,6 +255,7 @@ export default function App() {
           lastSynced={lastSynced}
           onShowAuth={() => setShowAuth(true)}
           onSync={pushToCloud}
+          onDeleteDeck={handleDeleteDeck}
         />
       )}
       {screen === 'study' && (
@@ -233,6 +263,7 @@ export default function App() {
           cards={studyCards}
           deckId={activeDeckId}
           onComplete={handleSessionComplete}
+          onExit={handleStudyExit}
         />
       )}
       {screen === 'complete' && sessionResults && (
