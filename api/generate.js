@@ -1,12 +1,14 @@
 import mammoth from 'mammoth'
 
+const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { text, fileData, cardCount = 15 } = req.body
+  const { text, fileData, url, cardCount = 15 } = req.body
 
-  if (!text && !fileData) {
-    return res.status(400).json({ error: 'Se requiere texto o archivo' })
+  if (!text && !fileData && !url) {
+    return res.status(400).json({ error: 'Se requiere texto, archivo o URL' })
   }
 
   const count = Math.min(Math.max(Number(cardCount) || 15, 5), 30)
@@ -22,6 +24,28 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error('DOCX extract error:', err)
       return res.status(400).json({ error: 'Error al procesar el archivo Word.' })
+    }
+  }
+
+  // Fetch and extract text from URL
+  let urlText = null
+  if (url) {
+    try {
+      const urlRes = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+      if (!urlRes.ok) {
+        return res.status(400).json({ error: `No se pudo acceder a la URL (${urlRes.status}).` })
+      }
+      const html = await urlRes.text()
+      urlText = html
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+      if (!urlText) return res.status(400).json({ error: 'No se pudo extraer texto de la URL.' })
+    } catch (err) {
+      console.error('URL fetch error:', err)
+      return res.status(400).json({ error: 'No se pudo acceder a la URL. Verificá que sea accesible.' })
     }
   }
 
@@ -63,20 +87,36 @@ FORMATO DE RESPUESTA — solo JSON, sin markdown, sin texto adicional:
 
 Genera las ${count} tarjetas ahora. Responde SOLO con el array JSON, sin texto antes ni después.`
 
-  const sourceText = text || docxText
-  const messageContent = fileData?.mimeType === 'application/pdf'
-    ? [
-        {
-          type: 'document',
-          source: {
-            type: 'base64',
-            media_type: 'application/pdf',
-            data: fileData.base64,
-          },
+  const sourceText = text || docxText || urlText
+  let messageContent
+
+  if (fileData?.mimeType === 'application/pdf') {
+    messageContent = [
+      {
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: fileData.base64,
         },
-        { type: 'text', text: instructions },
-      ]
-    : [{ type: 'text', text: `${instructions}\n\nMATERIAL:\n${sourceText}` }]
+      },
+      { type: 'text', text: instructions },
+    ]
+  } else if (fileData?.mimeType && IMAGE_MIME_TYPES.includes(fileData.mimeType)) {
+    messageContent = [
+      {
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: fileData.mimeType,
+          data: fileData.base64,
+        },
+      },
+      { type: 'text', text: instructions },
+    ]
+  } else {
+    messageContent = [{ type: 'text', text: `${instructions}\n\nMATERIAL:\n${sourceText}` }]
+  }
 
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {

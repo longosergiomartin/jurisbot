@@ -17,6 +17,7 @@ export default function Upload({ onReady, onBack }) {
   const [cardCount, setCardCount] = useState(15)
   const [hasGoal, setHasGoal] = useState(false)
   const [targetDate, setTargetDate] = useState('')
+  const [urlValue, setUrlValue] = useState('')
   const fileRef = useRef()
 
   function getFileMeta(file) {
@@ -28,6 +29,12 @@ export default function Upload({ onReady, onBack }) {
       name.endsWith('.docx')
     )
       return { mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', icon: '📝', ext: /\.docx$/i }
+    if (file.type === 'image/jpeg' || name.endsWith('.jpg') || name.endsWith('.jpeg'))
+      return { mimeType: 'image/jpeg', icon: '🖼️', ext: /\.(jpg|jpeg)$/i }
+    if (file.type === 'image/png' || name.endsWith('.png'))
+      return { mimeType: 'image/png', icon: '🖼️', ext: /\.png$/i }
+    if (file.type === 'image/webp' || name.endsWith('.webp'))
+      return { mimeType: 'image/webp', icon: '🖼️', ext: /\.webp$/i }
     return null
   }
 
@@ -35,7 +42,7 @@ export default function Upload({ onReady, onBack }) {
     if (!file) return
     const meta = getFileMeta(file)
     if (!meta) {
-      alert('Solo se aceptan archivos PDF o Word (.docx).')
+      alert('Solo se aceptan archivos PDF, Word (.docx) o imágenes (jpg, png, webp).')
       return
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -49,6 +56,7 @@ export default function Upload({ onReady, onBack }) {
       setFileName(file.name)
       setTitle(file.name.replace(meta.ext, '').replace(/[-_]/g, ' '))
       setText('')
+      setUrlValue('')
     }
     reader.readAsDataURL(file)
   }
@@ -59,19 +67,29 @@ export default function Upload({ onReady, onBack }) {
     handleFile(e.dataTransfer.files[0])
   }
 
+  function isValidUrl(val) {
+    return val.startsWith('http://') || val.startsWith('https://')
+  }
+
   function handleGenerate() {
-    if (!text.trim() && !fileData) return
+    if (!text.trim() && !fileData && !urlValue.trim()) return
+    if (urlValue.trim() && !isValidUrl(urlValue.trim())) {
+      alert('La URL debe empezar con http:// o https://')
+      return
+    }
     onReady({
       text: text.trim() || null,
       fileData: fileData || null,
+      url: urlValue.trim() || null,
       title: title.trim() || 'Sin título',
       cardCount,
       goal: hasGoal && targetDate ? { targetDate, setAt: new Date().toISOString() } : null,
     })
   }
 
-  const hasContent = text.trim() || fileData
+  const hasContent = text.trim() || fileData || urlValue.trim()
   const isTitleFilled = title.trim().length > 0
+  const urlDisablesOthers = urlValue.trim().length > 0
 
   return (
     <div className="screen">
@@ -90,7 +108,7 @@ export default function Upload({ onReady, onBack }) {
         <div className="kai-bubble" style={{ marginBottom: 20 }}>
           <span className="kai-avatar">🐶</span>
           <div className="kai-text">
-            Pegá tus apuntes, o subí un PDF o Word (.docx). ¡Kuma se encarga de convertirlo en tarjetas listas para usar!
+            Pegá tus apuntes, subí un PDF, Word (.docx) o imagen, o pegá un link. ¡Kuma se encarga de convertirlo en tarjetas listas para usar!
           </div>
         </div>
 
@@ -131,9 +149,10 @@ export default function Upload({ onReady, onBack }) {
               onChange={e => setText(e.target.value)}
               placeholder={EXAMPLES[0]}
               rows={8}
+              disabled={urlDisablesOthers}
               style={{
                 width: '100%',
-                background: 'rgba(255,255,255,0.04)',
+                background: urlDisablesOthers ? 'rgba(255,255,255,0.02)' : 'rgba(255,255,255,0.04)',
                 border: '1.5px solid var(--border)',
                 borderRadius: 14,
                 padding: '14px',
@@ -143,6 +162,8 @@ export default function Upload({ onReady, onBack }) {
                 outline: 'none',
                 transition: 'border-color 0.2s',
                 color: 'var(--text)',
+                opacity: urlDisablesOthers ? 0.4 : 1,
+                cursor: urlDisablesOthers ? 'not-allowed' : 'auto',
               }}
               onFocus={e => e.target.style.borderColor = 'var(--primary)'}
               onBlur={e => e.target.style.borderColor = 'var(--border)'}
@@ -162,24 +183,25 @@ export default function Upload({ onReady, onBack }) {
           </div>
         )}
 
-        {/* PDF drop zone */}
+        {/* File drop zone */}
         <div
-          onDragOver={e => { e.preventDefault(); setDragging(true) }}
+          onDragOver={e => { e.preventDefault(); if (!urlDisablesOthers) setDragging(true) }}
           onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
-          onClick={() => !fileData && fileRef.current?.click()}
+          onDrop={e => { if (!urlDisablesOthers) handleDrop(e); else e.preventDefault() }}
+          onClick={() => !fileData && !urlDisablesOthers && fileRef.current?.click()}
           style={{
             border: `2px dashed ${fileData ? 'var(--success)' : dragging ? 'var(--primary)' : 'var(--border)'}`,
             borderRadius: 14,
             padding: '20px',
             textAlign: 'center',
-            cursor: fileData ? 'default' : 'pointer',
+            cursor: fileData ? 'default' : urlDisablesOthers ? 'not-allowed' : 'pointer',
             background: fileData ? 'var(--success-dim)' : dragging ? 'var(--primary-dim)' : 'rgba(255,255,255,0.02)',
             transition: 'all 0.2s',
-            marginBottom: 20,
+            marginBottom: 16,
+            opacity: urlDisablesOthers && !fileData ? 0.4 : 1,
           }}
         >
-          <input ref={fileRef} type="file" accept=".pdf,.docx" style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} />
+          <input ref={fileRef} type="file" accept=".pdf,.docx,.jpg,.jpeg,.png,.webp" style={{ display: 'none' }} onChange={e => handleFile(e.target.files[0])} />
           {fileData ? (
             <div>
               <div style={{ fontSize: 28, marginBottom: 6 }}>{fileData.icon}</div>
@@ -194,11 +216,41 @@ export default function Upload({ onReady, onBack }) {
           ) : (
             <div>
               <div style={{ fontSize: 28, marginBottom: 6 }}>📎</div>
-              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Subir PDF o Word</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Arrastrá aquí o hacé click · PDF o .docx · Máx 10 MB</div>
+              <div style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>Subir archivo o imagen</div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>Arrastrá aquí o hacé click · PDF, .docx, jpg, png, webp · Máx 10 MB</div>
             </div>
           )}
         </div>
+
+        {/* URL input */}
+        {!fileData && (
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+              <span style={{ fontSize: 12, color: 'var(--text-muted)', fontWeight: 500 }}>o pegá un link</span>
+              <div style={{ flex: 1, height: 1, background: 'var(--border)' }} />
+            </div>
+            <input
+              type="text"
+              value={urlValue}
+              onChange={e => { setUrlValue(e.target.value); if (e.target.value.trim()) { setText(''); } }}
+              placeholder="https://..."
+              style={{
+                width: '100%',
+                background: 'rgba(255,255,255,0.04)',
+                border: '1.5px solid var(--border)',
+                borderRadius: 12,
+                padding: '11px 14px',
+                fontSize: 14,
+                outline: 'none',
+                transition: 'border-color 0.2s',
+                color: 'var(--text)',
+              }}
+              onFocus={e => e.target.style.borderColor = 'var(--primary)'}
+              onBlur={e => e.target.style.borderColor = 'var(--border)'}
+            />
+          </div>
+        )}
 
         {/* Goal section */}
         <div style={{ marginBottom: 20 }}>
