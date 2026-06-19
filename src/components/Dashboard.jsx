@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useState } from 'react'
+import { useMemo, useEffect, useState, useRef } from 'react'
 import { getDueCards } from '../services/fsrs'
 import { getLevel } from '../services/levels'
 import WeeklyCalendar from './WeeklyCalendar'
@@ -22,7 +22,7 @@ function getSessionEstimate(totalDue) {
   return '~8 min'
 }
 
-export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck, authUser, syncing, lastSynced, onShowAuth, onSync }) {
+export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck, authUser, syncing, lastSynced, onShowAuth, onSync, onDeleteDeck }) {
   const deckStats = useMemo(() => {
     return decks.map(deck => {
       const due = getDueCards(deck.cards)
@@ -39,9 +39,36 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
     () => ('Notification' in window ? Notification.permission : 'denied')
   )
 
+  // UX-14: shield tooltip on first appearance
+  const [shieldTooltipSeen, setShieldTooltipSeen] = useState(
+    () => !!localStorage.getItem('cognify_shield_seen')
+  )
+  const [showShieldTooltip, setShowShieldTooltip] = useState(false)
+  const shieldRef = useRef(null)
+
+  // UX-15: sync prompt
+  const [syncPromptDismissed, setSyncPromptDismissed] = useState(
+    () => !!localStorage.getItem('cognify_sync_prompt_dismissed')
+  )
+
   useEffect(() => {
     showReminderIfDue(totalDue)
+    // Show shield tooltip once when user first has shields
+    if ((user.streakShields ?? 0) > 0 && !shieldTooltipSeen) {
+      setShowShieldTooltip(true)
+    }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  function dismissShieldTooltip() {
+    localStorage.setItem('cognify_shield_seen', '1')
+    setShieldTooltipSeen(true)
+    setShowShieldTooltip(false)
+  }
+
+  function dismissSyncPrompt() {
+    localStorage.setItem('cognify_sync_prompt_dismissed', '1')
+    setSyncPromptDismissed(true)
+  }
 
   function handleRequestNotif() {
     requestNotificationPermission().then(granted => {
@@ -192,16 +219,45 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
                 🔥 {user.streak} {user.streak === 1 ? 'día' : 'días'}
               </div>
               {(user.streakShields ?? 0) > 0 && (
-                <div
-                  title={`${user.streakShields} escudo${user.streakShields > 1 ? 's' : ''} de racha disponible${user.streakShields > 1 ? 's' : ''}`}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: 3,
-                    background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)',
-                    borderRadius: 20, padding: '4px 8px', fontSize: 12,
-                    color: 'var(--teal)', fontWeight: 700, cursor: 'default',
-                  }}
-                >
-                  🛡️{user.streakShields > 1 ? ` ×${user.streakShields}` : ''}
+                <div style={{ position: 'relative' }}>
+                  <button
+                    ref={shieldRef}
+                    onClick={() => setShowShieldTooltip(v => !v)}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 3,
+                      background: 'rgba(34,211,238,0.1)', border: '1px solid rgba(34,211,238,0.3)',
+                      borderRadius: 20, padding: '4px 8px', fontSize: 12,
+                      color: 'var(--teal)', fontWeight: 700, cursor: 'pointer',
+                      fontFamily: 'inherit',
+                    }}
+                  >
+                    🛡️{user.streakShields > 1 ? ` ×${user.streakShields}` : ''}
+                  </button>
+                  {/* UX-14: Shield tooltip */}
+                  {showShieldTooltip && (
+                    <div
+                      style={{
+                        position: 'absolute', top: 36, right: 0, zIndex: 50,
+                        background: 'var(--card)', border: '1px solid rgba(34,211,238,0.4)',
+                        borderRadius: 12, padding: '12px 14px', width: 220,
+                        boxShadow: '0 8px 24px rgba(0,0,0,0.35)',
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--teal)' }}>🛡️ Escudo de racha</span>
+                        <button
+                          onClick={dismissShieldTooltip}
+                          style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: 16, cursor: 'pointer', padding: 0, lineHeight: 1 }}
+                        >×</button>
+                      </div>
+                      <p style={{ fontSize: 12, color: 'var(--text-soft)', lineHeight: 1.6, margin: 0 }}>
+                        Si te saltás un día de estudio, el escudo absorbe la falta y protege tu racha. Se recarga cada semana.
+                      </p>
+                      <p style={{ fontSize: 11, color: 'var(--teal)', marginTop: 6, fontWeight: 600 }}>
+                        Tenés {user.streakShields} escudo{user.streakShields > 1 ? 's' : ''} disponible{user.streakShields > 1 ? 's' : ''}.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -287,6 +343,51 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
           </div>
         )}
 
+        {/* UX-15: Cloud sync prompt — shown after second deck is created */}
+        {decks.length >= 2 && !authUser && !syncPromptDismissed && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(139,92,246,0.14) 0%, rgba(34,211,238,0.1) 100%)',
+            border: '1px solid rgba(139,92,246,0.3)',
+            borderRadius: 16,
+            padding: '14px 16px',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontWeight: 700, fontSize: 14, color: 'var(--primary-light)', marginBottom: 2 }}>
+                ☁️ Guardá tu progreso en la nube
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Ya tenés {decks.length} mazos — protegé tu trabajo para no perderlo si cambiás de dispositivo.
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+              <button
+                onClick={dismissSyncPrompt}
+                style={{
+                  background: 'none', border: 'none',
+                  color: 'var(--text-muted)', fontSize: 16,
+                  cursor: 'pointer', padding: '4px',
+                }}
+              >×</button>
+              <button
+                className="btn"
+                onClick={onShowAuth}
+                style={{
+                  background: 'linear-gradient(135deg, var(--primary), var(--teal))',
+                  color: '#fff', fontSize: 12, padding: '7px 14px',
+                  borderRadius: 10, fontWeight: 700,
+                }}
+              >
+                Activar
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Weekly calendar */}
         {decks.length > 0 && <WeeklyCalendar decks={decks} />}
 
@@ -330,7 +431,7 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {deckStats.map(deck => (
-                <DeckCard key={deck.id} deck={deck} onStudy={onStudy} onCompanion={onCompanion} />
+                <DeckCard key={deck.id} deck={deck} onStudy={onStudy} onCompanion={onCompanion} onDelete={onDeleteDeck} />
               ))}
             </div>
           )}
@@ -378,12 +479,53 @@ function getGoalStatus(goal, progress, total, learned) {
   }
 }
 
-function DeckCard({ deck, onStudy, onCompanion }) {
+function DeckCard({ deck, onStudy, onCompanion, onDelete }) {
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const progress = deck.total > 0 ? Math.round((deck.learned / deck.total) * 100) : 0
   const { gradient: topGradient } = getDomainColor(progress)
   const goalStatus = getGoalStatus(deck.goal, progress, deck.total, deck.learned)
 
   return (
+    <>
+    {/* UX-11: Delete confirm modal */}
+    {confirmDelete && (
+      <div style={{
+        position: 'fixed', inset: 0, zIndex: 200,
+        background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+        display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+        padding: '0 16px 24px',
+      }}>
+        <div className="card animate-pop" style={{ maxWidth: 380, width: '100%', padding: '24px', textAlign: 'center' }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>🗑️</div>
+          <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>¿Eliminar mazo?</h3>
+          <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 6, lineHeight: 1.6 }}>
+            Se eliminará <strong>"{deck.title}"</strong> y todo su progreso.
+          </p>
+          <p style={{ fontSize: 12, color: 'var(--danger)', marginBottom: 20 }}>Esta acción no se puede deshacer.</p>
+          <div style={{ display: 'flex', gap: 10 }}>
+            <button
+              className="btn btn-ghost"
+              onClick={() => setConfirmDelete(false)}
+              style={{ flex: 1, fontSize: 14 }}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={() => { setConfirmDelete(false); onDelete && onDelete(deck.id) }}
+              style={{
+                flex: 1, fontSize: 14, fontWeight: 600,
+                background: 'var(--danger)',
+                border: 'none', color: '#fff',
+                borderRadius: 12, padding: '11px',
+                cursor: 'pointer', fontFamily: 'inherit',
+              }}
+            >
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div
       style={{
         background: 'var(--card)',
@@ -470,9 +612,9 @@ function DeckCard({ deck, onStudy, onCompanion }) {
         )}
 
         {/* Action buttons */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
           <button
-            onClick={() => deck.dueCount > 0 ? onStudy(deck.id) : onStudy(deck.id)}
+            onClick={() => onStudy(deck.id)}
             style={{
               background: deck.dueCount > 0 ? 'linear-gradient(135deg, var(--primary), var(--pink))' : 'rgba(255,255,255,0.05)',
               border: `1px solid ${deck.dueCount > 0 ? 'transparent' : 'var(--border)'}`,
@@ -512,8 +654,26 @@ function DeckCard({ deck, onStudy, onCompanion }) {
           >
             🐶 Charlar
           </button>
+          {/* UX-11: Delete button */}
+          <button
+            onClick={e => { e.stopPropagation(); setConfirmDelete(true) }}
+            title="Eliminar mazo"
+            style={{
+              background: 'rgba(239,68,68,0.08)',
+              border: '1px solid rgba(239,68,68,0.2)',
+              borderRadius: 10,
+              padding: '9px 10px',
+              color: 'var(--danger)',
+              fontSize: 15,
+              cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            🗑️
+          </button>
         </div>
       </div>
     </div>
+    </>
   )
 }

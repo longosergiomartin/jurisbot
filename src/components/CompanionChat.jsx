@@ -1,14 +1,17 @@
 import { useState, useEffect, useRef } from 'react'
 
 export default function CompanionChat({ deck, onClose }) {
-  const [messages, setMessages] = useState([])
+  const [messages, setMessages] = useState(() => [
+    { role: 'assistant', content: `¡Hola! Soy Kuma 🐾 Estoy lista para explorar "${deck.title}" con vos. ¿Por dónde arrancamos?` },
+  ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
 
   useEffect(() => {
-    // Kuma opens the conversation
+    // Fetch a personalized opening from the API in the background;
+    // the static placeholder above is already visible to the user.
     sendToKuma([], true)
   }, [])
 
@@ -36,9 +39,17 @@ export default function CompanionChat({ deck, onClose }) {
       const data = await res.json()
       const reply = data.reply || '¡Hola! Estoy lista para charlar sobre el material. ¿Qué querés explorar? 🐾'
 
-      setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+      if (isGreeting) {
+        // Replace the static placeholder with the real API greeting
+        setMessages([{ role: 'assistant', content: reply }])
+      } else {
+        setMessages(prev => [...prev, { role: 'assistant', content: reply }])
+      }
     } catch {
-      setMessages(prev => [...prev, { role: 'assistant', content: '¡Ups! Algo falló. Probá de nuevo 🐾' }])
+      // Keep the static placeholder on greeting failure; show error for user messages
+      if (!isGreeting) {
+        setMessages(prev => [...prev, { role: 'assistant', content: '¡Ups! Algo falló. Probá de nuevo 🐾' }])
+      }
     }
     setLoading(false)
   }
@@ -110,7 +121,7 @@ export default function CompanionChat({ deck, onClose }) {
             </div>
           ))}
 
-          {loading && messages.length > 0 && (
+          {loading && messages.filter(m => m.role === 'user').length > 0 && (
             <div className="socratic-msg">
               <span style={{ fontSize: 20, flexShrink: 0 }}>🐶</span>
               <div className="socratic-bubble assistant" style={{ opacity: 0.7 }}>
@@ -122,8 +133,8 @@ export default function CompanionChat({ deck, onClose }) {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Suggestion chips (only at start) */}
-        {messages.length <= 1 && !loading && (
+        {/* Suggestion chips — visible immediately, before user sends first message */}
+        {messages.filter(m => m.role === 'user').length === 0 && (
           <div style={{ padding: '0 16px 8px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {[
               '¿Me podés explicar el concepto más difícil?',

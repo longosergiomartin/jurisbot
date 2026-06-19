@@ -1,38 +1,24 @@
 import { useState, useEffect, useRef } from 'react'
 
+const STARTER_CHIPS = [
+  '¿Qué es con tus palabras?',
+  '¿Para qué sirve?',
+  '¿Podés dar un ejemplo?',
+]
+
 export default function SocraticSession({ concept, modelAnswer, onClose }) {
-  const [messages, setMessages] = useState([])
+  const [messages, setMessages] = useState(() => [
+    { role: 'assistant', content: `¡Hola! Explicame qué es "${concept}" con tus propias palabras, como si yo nunca hubiera escuchado ese término. 🐾` },
+  ])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [isComplete, setIsComplete] = useState(false)
   const bottomRef = useRef(null)
-
-  useEffect(() => {
-    startSession()
-  }, [])
+  const textareaRef = useRef(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages, loading])
-
-  async function startSession() {
-    setLoading(true)
-    try {
-      const res = await fetch('/api/socratic', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ concept, modelAnswer, messages: [] }),
-      })
-      const data = await res.json()
-      if (data.message) {
-        setMessages([{ role: 'assistant', content: data.message }])
-        if (data.isComplete) setIsComplete(true)
-      }
-    } catch {
-      setMessages([{ role: 'assistant', content: `Hola! Explicame qué es "${concept}" como si yo fuera un niño de 10 años.` }])
-    }
-    setLoading(false)
-  }
 
   async function sendMessage() {
     if (!input.trim() || loading || isComplete) return
@@ -65,6 +51,11 @@ export default function SocraticSession({ concept, modelAnswer, onClose }) {
       e.preventDefault()
       sendMessage()
     }
+  }
+
+  function handleChip(chip) {
+    setInput(chip)
+    textareaRef.current?.focus()
   }
 
   return (
@@ -133,10 +124,35 @@ export default function SocraticSession({ concept, modelAnswer, onClose }) {
           <div ref={bottomRef} />
         </div>
 
+        {/* Starter chips (shown at the start, before first user message) */}
+        {!isComplete && messages.length === 1 && !loading && (
+          <div style={{ padding: '0 16px 8px', display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {STARTER_CHIPS.map(chip => (
+              <button
+                key={chip}
+                onClick={() => handleChip(chip)}
+                style={{
+                  background: 'var(--primary-dim)',
+                  border: '1px solid rgba(139,92,246,0.25)',
+                  borderRadius: 20,
+                  padding: '6px 12px',
+                  fontSize: 12,
+                  color: 'var(--primary-light)',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                }}
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Input */}
         {!isComplete && (
           <div className="socratic-input-area">
             <textarea
+              ref={textareaRef}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}

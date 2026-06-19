@@ -4,10 +4,10 @@ import SocraticSession from './SocraticSession'
 import PomodoroTimer from './PomodoroTimer'
 
 const RATING_CONFIG = [
-  { value: 1, label: 'No lo sabía', emoji: '❌', color: 'var(--danger)', bg: 'var(--danger-dim)' },
-  { value: 2, label: 'Difícil', emoji: '😬', color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  { value: 3, label: 'Bien', emoji: '✅', color: 'var(--success)', bg: 'var(--success-dim)' },
-  { value: 4, label: 'Fácil', emoji: '⭐', color: 'var(--accent)', bg: 'var(--accent-dim)' },
+  { value: 1, label: 'No lo sabía', emoji: '❌', color: 'var(--danger)', bg: 'var(--danger-dim)', hint: 'Kuma te lo mostrará pronto de nuevo' },
+  { value: 2, label: 'Difícil', emoji: '😬', color: '#f97316', bg: 'rgba(249,115,22,0.12)', hint: 'Lo verás en unos días' },
+  { value: 3, label: 'Bien', emoji: '✅', color: 'var(--success)', bg: 'var(--success-dim)', hint: '~1 semana hasta verlo de nuevo' },
+  { value: 4, label: 'Fácil', emoji: '⭐', color: 'var(--accent)', bg: 'var(--accent-dim)', hint: 'Lo tenés dominado — intervalo largo' },
 ]
 
 const CARD_LABELS = {
@@ -16,7 +16,7 @@ const CARD_LABELS = {
   short_answer: '✍️ Respuesta corta',
 }
 
-export default function StudySession({ cards, deckId, onComplete }) {
+export default function StudySession({ cards, deckId, onComplete, onExit }) {
   const [queue] = useState(() => [...cards])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
@@ -31,11 +31,16 @@ export default function StudySession({ cards, deckId, onComplete }) {
   const [updatedCards, setUpdatedCards] = useState([])
   const [results, setResults] = useState({ correct: 0, wrong: 0 })
   const [startTime] = useState(Date.now())
+  const [showExitConfirm, setShowExitConfirm] = useState(false)
+  const [undoState, setUndoState] = useState(null)
+  const [canUndo, setCanUndo] = useState(false)
+  const [showCoachmark, setShowCoachmark] = useState(
+    () => !localStorage.getItem('cognify_rating_coach_seen')
+  )
 
   const current = queue[currentIndex]
   const total = cards.length
   const progress = Math.round((currentIndex / total) * 100)
-  // Support both field names for backward compat with existing saved cards
   const question = current?.front || current?.question || ''
 
   useEffect(() => {
@@ -66,12 +71,15 @@ export default function StudySession({ cards, deckId, onComplete }) {
   }
 
   function handleReveal() {
+    setCanUndo(false)
+    setUndoState(null)
     setRevealed(true)
-    // No AI call — answer is already on the card; Kuma prompts rating below
   }
 
   function handleMCQSelect(index) {
     if (mcqResult) return
+    setCanUndo(false)
+    setUndoState(null)
     setSelectedOption(index)
     const correct = index === current.correctIndex
     setMcqResult(correct ? 'correct' : 'wrong')
@@ -83,6 +91,8 @@ export default function StudySession({ cards, deckId, onComplete }) {
 
   async function handleShortAnswerSubmit() {
     if (!userAnswer.trim()) return
+    setCanUndo(false)
+    setUndoState(null)
     setShortAnswerSubmitted(true)
     setRevealed(true)
     await fetchFeedback(question, current.back, userAnswer)
@@ -90,13 +100,15 @@ export default function StudySession({ cards, deckId, onComplete }) {
 
   function selectRating(value) {
     if (pendingRating !== null) return
+    setUndoState({ currentIndex, updatedCards: [...updatedCards], results: { ...results } })
     setPendingRating(value)
     setTimeout(() => handleRate(value), 480)
   }
 
   const handleRate = useCallback((rating) => {
     const scheduled = scheduleCard(current, rating, new Date())
-    setUpdatedCards(prev => [...prev, scheduled])
+    const newUpdatedCards = [...updatedCards, scheduled]
+    setUpdatedCards(newUpdatedCards)
 
     const isCorrect = rating >= 3
     const newResults = {
@@ -108,7 +120,7 @@ export default function StudySession({ cards, deckId, onComplete }) {
     const nextIndex = currentIndex + 1
     if (nextIndex >= queue.length) {
       onComplete({
-        updatedCards: [...updatedCards, scheduled],
+        updatedCards: newUpdatedCards,
         correct: newResults.correct,
         wrong: newResults.wrong,
         total,
@@ -117,8 +129,24 @@ export default function StudySession({ cards, deckId, onComplete }) {
       })
     } else {
       setCurrentIndex(nextIndex)
+      setCanUndo(true)
     }
   }, [current, currentIndex, queue, updatedCards, results, total, startTime, onComplete])
+
+  function handleUndo() {
+    if (!canUndo || !undoState) return
+    setCurrentIndex(undoState.currentIndex)
+    setUpdatedCards(undoState.updatedCards)
+    setResults(undoState.results)
+    setCanUndo(false)
+    setUndoState(null)
+    setPendingRating(null)
+  }
+
+  function dismissCoachmark() {
+    localStorage.setItem('cognify_rating_coach_seen', '1')
+    setShowCoachmark(false)
+  }
 
   if (!current) return null
 
@@ -126,7 +154,9 @@ export default function StudySession({ cards, deckId, onComplete }) {
 
   return (
     <>
-      <PomodoroTimer />
+      {/* UX-09: Pomodoro only for sessions of 8+ cards */}
+      {cards.length >= 8 && <PomodoroTimer autoStart={false} />}
+
       {showSocratic && (
         <SocraticSession
           concept={question}
@@ -135,16 +165,84 @@ export default function StudySession({ cards, deckId, onComplete }) {
         />
       )}
 
+      {/* UX-10: Exit confirm modal */}
+      {showExitConfirm && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 200,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+          padding: '0 16px 24px',
+        }}>
+          <div className="card animate-pop" style={{ maxWidth: 380, width: '100%', padding: '24px', textAlign: 'center' }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>🚪</div>
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>¿Salir de la sesión?</h3>
+            <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 20, lineHeight: 1.6 }}>
+              Vas a perder el progreso de esta sesión. Las tarjetas ya calificadas se guardan igual.
+            </p>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setShowExitConfirm(false)}
+                style={{ flex: 1, fontSize: 14 }}
+              >
+                Seguir estudiando
+              </button>
+              <button
+                onClick={() => onExit && onExit(updatedCards)}
+                style={{
+                  flex: 1, fontSize: 14, fontWeight: 600,
+                  background: 'var(--danger-dim)',
+                  border: '1px solid rgba(239,68,68,0.35)',
+                  color: 'var(--danger)',
+                  borderRadius: 12, padding: '11px',
+                  cursor: 'pointer', fontFamily: 'inherit',
+                }}
+              >
+                Salir
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="screen" style={{ paddingTop: 16 }}>
         <div className="container animate-fade">
 
           {/* Progress header */}
           <div style={{ marginBottom: 16 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
-                {currentIndex + 1} / {total}
-              </span>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* UX-10: exit button */}
+                <button
+                  onClick={() => setShowExitConfirm(true)}
+                  title="Salir de la sesión"
+                  style={{
+                    background: 'none', border: 'none',
+                    color: 'var(--text-muted)', fontSize: 20,
+                    cursor: 'pointer', padding: '0 2px', lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>
+                  {currentIndex + 1} / {total}
+                </span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {/* UX-13: undo button */}
+                {canUndo && (
+                  <button
+                    onClick={handleUndo}
+                    style={{
+                      background: 'none', border: '1px solid var(--border)',
+                      borderRadius: 8, padding: '3px 10px',
+                      color: 'var(--text-muted)', fontSize: 12,
+                      cursor: 'pointer', fontFamily: 'inherit',
+                    }}
+                  >
+                    ↩ Deshacer
+                  </button>
+                )}
                 <span style={{ fontSize: 13, color: 'var(--success)' }}>✅ {results.correct}</span>
                 <span style={{ fontSize: 13, color: 'var(--danger)' }}>❌ {results.wrong}</span>
               </div>
@@ -273,7 +371,6 @@ export default function StudySession({ cards, deckId, onComplete }) {
             </button>
           )}
 
-
           {/* Show answer button — flashcard */}
           {current.type === 'flashcard' && !revealed && (
             <button
@@ -300,6 +397,38 @@ export default function StudySession({ cards, deckId, onComplete }) {
           {/* Rating buttons — flashcard & short_answer */}
           {revealed && current.type !== 'mcq' && (
             <div className="animate-pop" style={{ marginTop: 8 }}>
+              {/* UX-07: First-session coachmark */}
+              {showCoachmark && currentIndex === 0 && (
+                <div
+                  id="rating-coachmark"
+                  style={{
+                    background: 'var(--primary-dim)',
+                    border: '1px solid rgba(139,92,246,0.35)',
+                    borderRadius: 14,
+                    padding: '12px 14px',
+                    marginBottom: 12,
+                    position: 'relative',
+                  }}
+                >
+                  <button
+                    onClick={dismissCoachmark}
+                    style={{
+                      position: 'absolute', top: 8, right: 10,
+                      background: 'none', border: 'none',
+                      color: 'var(--text-muted)', fontSize: 16,
+                      cursor: 'pointer', padding: 0, lineHeight: 1,
+                    }}
+                  >×</button>
+                  <p style={{ fontSize: 13, fontWeight: 700, color: 'var(--primary-light)', marginBottom: 4 }}>
+                    🐾 ¿Cómo calificar?
+                  </p>
+                  <p style={{ fontSize: 12, color: 'var(--text-soft)', lineHeight: 1.6 }}>
+                    Sé honesto — tu calificación le dice a Kuma cuándo mostrarte esta tarjeta de nuevo.{' '}
+                    <strong style={{ color: 'var(--danger)' }}>❌ No lo sabía</strong> = pronto,{' '}
+                    <strong style={{ color: 'var(--accent)' }}>⭐ Fácil</strong> = en semanas.
+                  </p>
+                </div>
+              )}
               <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>
                 ¿Qué tan bien lo sabías?
               </p>
@@ -316,25 +445,33 @@ export default function StudySession({ cards, deckId, onComplete }) {
                         background: isSelected ? r.color : r.bg,
                         border: `1.5px solid ${isSelected ? r.color : r.color + '40'}`,
                         borderRadius: 14,
-                        padding: '13px 8px',
+                        padding: '10px 8px 8px',
                         color: isSelected ? '#fff' : r.color,
                         fontWeight: 700,
                         fontSize: 13,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                         transition: 'all 0.2s',
                         transform: isSelected ? 'scale(1.05)' : 'scale(1)',
                         opacity: isDimmed ? 0.28 : 1,
                         boxShadow: isSelected ? `0 4px 16px ${r.color}55` : 'none',
+                        cursor: pendingRating !== null ? 'default' : 'pointer',
                       }}
                     >
-                      {isSelected ? '✓' : r.emoji} {r.label}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        {isSelected ? '✓' : r.emoji} {r.label}
+                      </span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 400,
+                        opacity: isSelected ? 0.85 : 0.6,
+                        color: isSelected ? '#fff' : r.color,
+                        lineHeight: 1.3, textAlign: 'center',
+                      }}>
+                        {r.hint}
+                      </span>
                     </button>
                   )
                 })}
               </div>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8 }}>
-                Kuma usa tu respuesta para saber cuándo mostrarte esta tarjeta de nuevo 🐾
-              </p>
             </div>
           )}
 
@@ -395,25 +532,33 @@ export default function StudySession({ cards, deckId, onComplete }) {
                         background: isSelected ? r.color : r.bg,
                         border: `1.5px solid ${isSelected ? r.color : r.color + '40'}`,
                         borderRadius: 14,
-                        padding: '13px 8px',
+                        padding: '10px 8px 8px',
                         color: isSelected ? '#fff' : r.color,
                         fontWeight: 700,
                         fontSize: 13,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3,
                         transition: 'all 0.2s',
                         transform: isSelected ? 'scale(1.05)' : 'scale(1)',
                         opacity: isDimmed ? 0.28 : 1,
                         boxShadow: isSelected ? `0 4px 16px ${r.color}55` : 'none',
+                        cursor: pendingRating !== null ? 'default' : 'pointer',
                       }}
                     >
-                      {isSelected ? '✓' : r.emoji} {r.label}
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                        {isSelected ? '✓' : r.emoji} {r.label}
+                      </span>
+                      <span style={{
+                        fontSize: 10, fontWeight: 400,
+                        opacity: isSelected ? 0.85 : 0.6,
+                        color: isSelected ? '#fff' : r.color,
+                        lineHeight: 1.3, textAlign: 'center',
+                      }}>
+                        {r.hint}
+                      </span>
                     </button>
                   )
                 })}
               </div>
-              <p style={{ fontSize: 11, color: 'var(--text-muted)', textAlign: 'center', marginTop: 8 }}>
-                Kuma usa tu respuesta para saber cuándo mostrarte esta tarjeta de nuevo 🐾
-              </p>
             </div>
           )}
 
