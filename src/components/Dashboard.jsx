@@ -223,6 +223,30 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
         {/* Weekly calendar */}
         {decks.length > 0 && <WeeklyCalendar decks={decks} />}
 
+        {/* Course/Book Progress */}
+        {(() => {
+          const chaptersWithProgress = deckStats.filter(d => d.chapter)
+          if (chaptersWithProgress.length === 0) return null
+          return (
+            <div style={{ background: 'var(--card)', border: '1px solid var(--teal-dim)', borderRadius: 16, padding: '16px', marginBottom: 20 }}>
+              <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 10, color: 'var(--teal)' }}>
+                📖 Progreso del libro/curso
+              </div>
+              {chaptersWithProgress.map(d => {
+                const prog = d.total > 0 ? Math.round((d.learned / d.total) * 100) : 0
+                const color = prog >= 80 ? 'var(--success)' : prog >= 40 ? 'var(--accent)' : 'var(--text-muted)'
+                return (
+                  <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, flex: 1 }}>Cap. {d.chapter.current}: {d.title}</span>
+                    <span style={{ fontSize: 12, color, fontWeight: 600 }}>{prog}%</span>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
+
         {/* Decks list */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
@@ -311,6 +335,11 @@ function DeckCard({ deck, onStudy, onCompanion }) {
         {/* Title row */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
           <div style={{ flex: 1, minWidth: 0 }}>
+            {deck.chapter && (
+              <div style={{ fontSize: 11, color: 'var(--teal)', fontWeight: 600, marginBottom: 4 }}>
+                📖 Cap. {deck.chapter.current} de {deck.chapter.total}
+              </div>
+            )}
             <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {deck.title}
             </div>

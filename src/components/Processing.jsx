@@ -71,6 +71,7 @@ export default function Processing({ source, onComplete, onError }) {
         title: source.title,
         createdAt: new Date().toISOString(),
         goal: source.goal || null,
+        chapter: source.chapter || null,
         cards,
       }
 
