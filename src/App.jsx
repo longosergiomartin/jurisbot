@@ -12,7 +12,7 @@ import * as storage from './services/storage'
 import { getDueCards } from './services/fsrs'
 import { getLevel } from './services/levels'
 import { supabase, isSupabaseEnabled } from './services/supabase'
-import { fetchProfile, fetchDecks, upsertProfile, upsertCards, migrateLocalToCloud } from './services/cloud'
+import { fetchProfile, fetchDecks, upsertProfile, upsertCards, migrateLocalToCloud, insertSession } from './services/cloud'
 import { DEMO_DECK, DEMO_CARDS } from './data/demoCards'
 
 export default function App() {
@@ -80,6 +80,9 @@ export default function App() {
             lastStudyDate: cloudProfile.last_study_date || localUser?.lastStudyDate || null,
             totalSessions: cloudProfile.total_sessions ?? localUser?.totalSessions ?? 0,
             xp: cloudProfile.xp ?? localUser?.xp ?? 0,
+            streakShields: cloudProfile.streak_shields ?? localUser?.streakShields ?? 1,
+            lastShieldWeek: cloudProfile.last_shield_week ?? localUser?.lastShieldWeek ?? null,
+            plan: cloudProfile.plan ?? localUser?.plan ?? 'free',
           }
           storage.saveUser(merged)
           setUser(merged)
@@ -196,11 +199,18 @@ export default function App() {
     setSessionResults({ ...results, xpEarned: results.xpEarned, levelUp, shieldUsed })
     setScreen('complete')
 
-    // Sync updated cards + profile to cloud in background
+    // Sync updated cards + profile + session log to cloud in background
     if (authUser) {
       try {
+        const endTime = new Date().toISOString()
         await upsertCards(authUser.id, activeDeckId, results.updatedCards)
         await upsertProfile(authUser.id, userWithXP)
+        await insertSession(authUser.id, activeDeckId, {
+          startTime: results.startTime,
+          endTime,
+          cardsStudied: results.total,
+          correctAnswers: results.correct,
+        })
         setLastSynced(new Date())
       } catch (err) {
         console.error('Post-session sync error:', err)

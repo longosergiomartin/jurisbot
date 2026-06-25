@@ -126,6 +126,7 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
         total,
         timeSeconds: Math.round((Date.now() - startTime) / 1000),
         xpEarned: newResults.correct * 10 + total * 2,
+        startTime: new Date(startTime).toISOString(),
       })
     } else {
       setCurrentIndex(nextIndex)
