@@ -41,7 +41,7 @@ export default function Auth({ onClose }) {
     })
     setLoading(false)
     if (err) {
-      setError('No pudimos enviar el email. Intentá de nuevo.')
+      setError(`Error: ${err.message || err.status || JSON.stringify(err)}`)
     } else {
       setSent(true)
     }
