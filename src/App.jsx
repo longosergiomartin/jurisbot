@@ -299,7 +299,7 @@ export default function App() {
           onClose={() => setScreen('dashboard')}
         />
       )}
-      {showAuth && isSupabaseEnabled() && (
+      {showAuth && (
         <Auth onClose={() => setShowAuth(false)} />
       )}
     </>

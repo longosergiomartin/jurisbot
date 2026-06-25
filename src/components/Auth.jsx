@@ -1,11 +1,34 @@
 import { useState } from 'react'
-import { supabase } from '../services/supabase'
+import { supabase, isSupabaseEnabled } from '../services/supabase'
 
 export default function Auth({ onClose }) {
   const [email, setEmail] = useState('')
   const [sent, setSent] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+
+  if (!isSupabaseEnabled()) {
+    return (
+      <div
+        style={{
+          position: 'fixed', inset: 0, zIndex: 999,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          padding: 20,
+        }}
+        onClick={e => { if (e.target === e.currentTarget) onClose() }}
+      >
+        <div className="card animate-pop" style={{ maxWidth: 380, width: '100%', padding: '32px 28px', textAlign: 'center' }}>
+          <div style={{ fontSize: 52, marginBottom: 16 }}>🔧</div>
+          <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Sincronización no disponible</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: 14, lineHeight: 1.6, marginBottom: 24 }}>
+            La sincronización en la nube no está configurada en este entorno. Contactá al administrador de la app.
+          </p>
+          <button className="btn btn-ghost" onClick={onClose} style={{ width: '100%' }}>Cerrar</button>
+        </div>
+      </div>
+    )
+  }
 
   async function handleSend(e) {
     e.preventDefault()
