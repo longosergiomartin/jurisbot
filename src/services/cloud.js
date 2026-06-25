@@ -15,6 +15,9 @@ export async function upsertProfile(userId, profile) {
     last_study_date: profile.lastStudyDate,
     total_sessions: profile.totalSessions,
     xp: profile.xp,
+    streak_shields: profile.streakShields ?? 0,
+    last_shield_week: profile.lastShieldWeek ?? null,
+    plan: profile.plan ?? 'free',
   })
 }
 
@@ -67,6 +70,19 @@ export async function upsertCards(userId, deckId, cards) {
   await supabase.from('cards').upsert(
     cards.map(c => cardToDb(c, deckId, userId))
   )
+}
+
+// ─── Sessions (analytics) ─────────────────────────────────────────────────────
+
+export async function insertSession(userId, deckId, { startTime, endTime, cardsStudied, correctAnswers }) {
+  await supabase.from('sessions').insert({
+    user_id: userId,
+    deck_id: deckId,
+    start_time: startTime,
+    end_time: endTime,
+    cards_studied: cardsStudied,
+    correct_answers: correctAnswers,
+  })
 }
 
 // ─── Migration: localStorage → Supabase ──────────────────────────────────────
