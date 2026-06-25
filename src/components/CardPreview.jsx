@@ -6,8 +6,12 @@ const TYPE_LABELS = {
   short_answer: '✍️',
 }
 
-function CardItem({ card, onDelete, onSave }) {
-  const [editing, setEditing] = useState(false)
+function generateId() {
+  return Math.random().toString(36).slice(2) + Date.now().toString(36)
+}
+
+function CardItem({ card, onDelete, onSave, onRegenerate, regenerating }) {
+  const [editing, setEditing] = useState(card._isNew || false)
   const [front, setFront] = useState(card.front || card.question || '')
   const [back, setBack] = useState(card.back || card.explanation || '')
 
@@ -25,6 +29,8 @@ function CardItem({ card, onDelete, onSave }) {
       border: '1px solid var(--border)',
       borderRadius: 14,
       overflow: 'hidden',
+      opacity: regenerating ? 0.6 : 1,
+      transition: 'opacity 0.2s',
     }}>
       {/* Type stripe */}
       <div style={{
@@ -44,16 +50,31 @@ function CardItem({ card, onDelete, onSave }) {
           </span>
           <div style={{ display: 'flex', gap: 6 }}>
             {!editing && (
-              <button
-                onClick={() => setEditing(true)}
-                style={{
-                  background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
-                  borderRadius: 8, padding: '3px 10px', fontSize: 12,
-                  color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
-                }}
-              >
-                ✏️ Editar
-              </button>
+              <>
+                <button
+                  onClick={() => onRegenerate(card.id)}
+                  disabled={regenerating}
+                  style={{
+                    background: 'rgba(124,58,237,0.1)', border: '1px solid rgba(124,58,237,0.3)',
+                    borderRadius: 8, padding: '3px 10px', fontSize: 12,
+                    color: 'var(--primary-light)', cursor: regenerating ? 'not-allowed' : 'pointer',
+                    fontFamily: 'inherit',
+                  }}
+                  title="Regenerar esta tarjeta"
+                >
+                  {regenerating ? '⏳' : '🔄'}
+                </button>
+                <button
+                  onClick={() => setEditing(true)}
+                  style={{
+                    background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                    borderRadius: 8, padding: '3px 10px', fontSize: 12,
+                    color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
+                  }}
+                >
+                  ✏️ Editar
+                </button>
+              </>
             )}
             <button
               onClick={() => onDelete(card.id)}
@@ -79,6 +100,7 @@ function CardItem({ card, onDelete, onSave }) {
                 value={front}
                 onChange={e => setFront(e.target.value)}
                 rows={3}
+                autoFocus
                 style={{
                   width: '100%', background: 'rgba(255,255,255,0.05)',
                   border: '1px solid var(--primary)', borderRadius: 8,
@@ -151,8 +173,11 @@ function CardItem({ card, onDelete, onSave }) {
   )
 }
 
-export default function CardPreview({ deck, onStart, onBack }) {
+export default function CardPreview({ deck, source, onStart, onBack }) {
   const [cards, setCards] = useState(deck?.cards || [])
+  const [regeneratingId, setRegeneratingId] = useState(null)
+  const [redistributing, setRedistributing] = useState(false)
+  const [error, setError] = useState(null)
 
   function handleDelete(cardId) {
     setCards(prev => prev.filter(c => c.id !== cardId))
@@ -163,12 +188,76 @@ export default function CardPreview({ deck, onStart, onBack }) {
       if (c.id !== cardId) return c
       return {
         ...c,
-        front: c.type === 'flashcard' ? newFront : c.front,
-        question: c.type !== 'flashcard' ? newFront : c.question,
+        front: newFront,
         back: newBack,
-        explanation: c.type === 'mcq' ? newBack : c.explanation,
       }
     }))
+  }
+
+  function handleAddManual() {
+    const newCard = {
+      id: generateId(),
+      type: 'flashcard',
+      front: '',
+      back: '',
+      _isNew: true,
+    }
+    setCards(prev => [...prev, newCard])
+  }
+
+  async function handleRegenerate(cardId) {
+    setRegeneratingId(cardId)
+    setError(null)
+    try {
+      const existingCards = cards.filter(c => c.id !== cardId)
+      const body = { existingCards }
+      if (source?.fileData) {
+        body.fileData = source.fileData
+      } else {
+        body.text = source?.text || ''
+      }
+
+      const res = await fetch('/api/regenerate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.card) throw new Error(data.error || 'Error al regenerar')
+
+      const newCard = { ...data.card, id: generateId() }
+      setCards(prev => prev.map(c => c.id === cardId ? newCard : c))
+    } catch (err) {
+      setError('No se pudo regenerar la tarjeta. Intentá de nuevo.')
+    }
+    setRegeneratingId(null)
+  }
+
+  async function handleRedistribute() {
+    if (!source) return
+    setRedistributing(true)
+    setError(null)
+    try {
+      const body = {
+        text: source.text || null,
+        fileData: source.fileData || null,
+        url: source.url || null,
+        cardCount: source.cardCount || 15,
+      }
+
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.cards) throw new Error(data.error || 'Error al redistribuir')
+
+      setCards(data.cards)
+    } catch (err) {
+      setError('No se pudo generar otra distribución. Intentá de nuevo.')
+    }
+    setRedistributing(false)
   }
 
   return (
@@ -176,18 +265,18 @@ export default function CardPreview({ deck, onStart, onBack }) {
       <div className="container animate-fade">
 
         {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, marginBottom: 20 }}>
           <button
             onClick={onBack}
             style={{
               background: 'none', border: 'none',
               color: 'var(--text-muted)', fontSize: 20,
-              cursor: 'pointer', padding: '2px 4px', lineHeight: 1,
+              cursor: 'pointer', padding: '2px 4px', lineHeight: 1, flexShrink: 0,
             }}
           >
             ←
           </button>
-          <div>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 2 }}>
               Revisá tus tarjetas
             </h2>
@@ -195,27 +284,70 @@ export default function CardPreview({ deck, onStart, onBack }) {
               {cards.length} tarjeta{cards.length !== 1 ? 's' : ''} generadas · podés editar o eliminar antes de estudiar
             </p>
           </div>
+          {source && (
+            <button
+              onClick={handleRedistribute}
+              disabled={redistributing}
+              style={{
+                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                borderRadius: 10, padding: '7px 12px', fontSize: 12,
+                color: 'var(--text-muted)', cursor: redistributing ? 'not-allowed' : 'pointer',
+                fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap',
+              }}
+              title="Generar otra distribución de tarjetas"
+            >
+              {redistributing ? '⏳ Generando...' : '🎲 Otra distribución'}
+            </button>
+          )}
         </div>
 
         {/* Kuma tip */}
         <div className="kai-bubble" style={{ marginBottom: 20 }}>
           <span className="kai-avatar">🐶</span>
           <div className="kai-text">
-            ¡Revisá que las tarjetas sean claras antes de empezar! Podés editar o borrar las que no te gusten. 🐾
+            ¡Revisá que las tarjetas sean claras antes de empezar! Podés editar, regenerar o borrar las que no te gusten. 🐾
           </div>
         </div>
 
+        {error && (
+          <div style={{
+            background: 'rgba(244,63,94,0.1)', border: '1px solid rgba(244,63,94,0.3)',
+            borderRadius: 10, padding: '10px 14px', marginBottom: 16,
+            fontSize: 13, color: '#fb7185',
+          }}>
+            ⚠️ {error}
+          </div>
+        )}
+
         {/* Cards list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 16 }}>
           {cards.map(card => (
             <CardItem
               key={card.id}
               card={card}
               onDelete={handleDelete}
               onSave={handleSave}
+              onRegenerate={handleRegenerate}
+              regenerating={regeneratingId === card.id}
             />
           ))}
         </div>
+
+        {/* Add manual card */}
+        <button
+          onClick={handleAddManual}
+          style={{
+            width: '100%', background: 'rgba(255,255,255,0.03)',
+            border: '1px dashed var(--border)', borderRadius: 12,
+            padding: '12px', fontSize: 13, color: 'var(--text-muted)',
+            cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20,
+            transition: 'border-color 0.15s, color 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary-light)' }}
+          onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-muted)' }}
+        >
+          + Añadir tarjeta manual
+        </button>
 
         {cards.length === 0 && (
           <div style={{ textAlign: 'center', padding: '32px 20px', color: 'var(--text-muted)', background: 'var(--card)', borderRadius: 16, border: '1px dashed var(--border)', marginBottom: 24 }}>
