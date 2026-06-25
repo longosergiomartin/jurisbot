@@ -63,36 +63,35 @@ export default function App() {
   async function syncFromCloud(supabaseUser, localUser, localDecks) {
     setSyncing(true)
     try {
+      // Always run migration: handles empty cloud, conflict resolution, and new decks
+      await migrateLocalToCloud(supabaseUser.id, localUser, localDecks)
+
+      // Cloud is now the source of truth — load everything fresh
       const cloudProfile = await fetchProfile(supabaseUser.id)
       const cloudDecks = await fetchDecks(supabaseUser.id)
 
-      if (!cloudProfile && !cloudDecks?.length) {
-        // First login — migrate local data
-        await migrateLocalToCloud(supabaseUser.id, localUser, localDecks)
-        setLastSynced(new Date())
-      } else {
-        // Load cloud data into app
-        if (cloudProfile) {
-          const merged = {
-            ...(localUser || {}),
-            name: cloudProfile.name || localUser?.name || 'Estudiante',
-            streak: cloudProfile.streak ?? localUser?.streak ?? 0,
-            lastStudyDate: cloudProfile.last_study_date || localUser?.lastStudyDate || null,
-            totalSessions: cloudProfile.total_sessions ?? localUser?.totalSessions ?? 0,
-            xp: cloudProfile.xp ?? localUser?.xp ?? 0,
-            streakShields: cloudProfile.streak_shields ?? localUser?.streakShields ?? 1,
-            lastShieldWeek: cloudProfile.last_shield_week ?? localUser?.lastShieldWeek ?? null,
-            plan: cloudProfile.plan ?? localUser?.plan ?? 'free',
-          }
-          storage.saveUser(merged)
-          setUser(merged)
+      // Clear stale localStorage data (cloud is now canonical)
+      storage.clearAll()
+
+      if (cloudProfile) {
+        const merged = {
+          name: cloudProfile.name || localUser?.name || 'Estudiante',
+          streak: cloudProfile.streak ?? 0,
+          lastStudyDate: cloudProfile.last_study_date || null,
+          totalSessions: cloudProfile.total_sessions ?? 0,
+          xp: cloudProfile.xp ?? 0,
+          streakShields: cloudProfile.streak_shields ?? 1,
+          lastShieldWeek: cloudProfile.last_shield_week ?? null,
+          plan: cloudProfile.plan ?? 'free',
         }
-        if (cloudDecks?.length) {
-          storage.saveDecks(cloudDecks)
-          setDecks(cloudDecks)
-        }
-        setLastSynced(new Date())
+        storage.saveUser(merged)
+        setUser(merged)
       }
+      if (cloudDecks?.length) {
+        storage.saveDecks(cloudDecks)
+        setDecks(cloudDecks)
+      }
+      setLastSynced(new Date())
     } catch (err) {
       console.error('Sync error:', err)
     }
@@ -288,7 +287,9 @@ export default function App() {
         <SessionComplete
           results={sessionResults}
           user={user}
+          authUser={authUser}
           onDone={handleSessionDone}
+          onShowAuth={() => setShowAuth(true)}
         />
       )}
       {screen === 'companion' && companionDeckId && (

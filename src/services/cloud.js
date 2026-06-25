@@ -18,6 +18,7 @@ export async function upsertProfile(userId, profile) {
     streak_shields: profile.streakShields ?? 0,
     last_shield_week: profile.lastShieldWeek ?? null,
     plan: profile.plan ?? 'free',
+    updated_at: new Date().toISOString(),
   })
 }
 
@@ -87,10 +88,50 @@ export async function insertSession(userId, deckId, { startTime, endTime, cardsS
 
 // ─── Migration: localStorage → Supabase ──────────────────────────────────────
 
+function getMaxCardReview(cards) {
+  if (!cards?.length) return new Date(0)
+  const dates = cards.filter(c => c.lastReview).map(c => new Date(c.lastReview))
+  return dates.length ? new Date(Math.max(...dates.map(d => d.getTime()))) : new Date(0)
+}
+
 export async function migrateLocalToCloud(userId, localUser, localDecks) {
-  if (localUser) await upsertProfile(userId, localUser)
-  for (const deck of localDecks) {
-    await insertDeck(userId, deck)
+  const [cloudProfile, cloudDecks] = await Promise.all([
+    fetchProfile(userId),
+    fetchDecks(userId),
+  ])
+
+  const hasCloudData = !!cloudProfile || cloudDecks?.length > 0
+
+  if (!hasCloudData) {
+    // Brand new account — push everything from localStorage
+    if (localUser) await upsertProfile(userId, localUser)
+    for (const deck of (localDecks || [])) {
+      await insertDeck(userId, deck)
+    }
+    return
+  }
+
+  // Conflict resolution: "last modified wins"
+  // Profile: compare updatedAt timestamps
+  const localUpdatedAt = localUser?.updatedAt ? new Date(localUser.updatedAt) : new Date(0)
+  const cloudUpdatedAt = cloudProfile?.updated_at ? new Date(cloudProfile.updated_at) : new Date(0)
+  if (localUser && localUpdatedAt > cloudUpdatedAt) {
+    await upsertProfile(userId, localUser)
+  }
+
+  // Decks: new local decks get pushed; existing decks compare max card lastReview
+  const cloudDeckIds = new Set((cloudDecks || []).map(d => d.id))
+  for (const localDeck of (localDecks || [])) {
+    if (!cloudDeckIds.has(localDeck.id)) {
+      await insertDeck(userId, localDeck)
+    } else {
+      const cloudDeck = cloudDecks.find(d => d.id === localDeck.id)
+      const localMax = getMaxCardReview(localDeck.cards)
+      const cloudMax = getMaxCardReview(cloudDeck?.cards)
+      if (localMax > cloudMax) {
+        await insertDeck(userId, localDeck)
+      }
+    }
   }
 }
 

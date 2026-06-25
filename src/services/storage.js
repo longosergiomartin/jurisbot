@@ -74,15 +74,21 @@ export function updateStreak(user) {
     totalSessions: user.totalSessions + 1,
     streakShields: shields,
     lastShieldWeek: thisWeek,
+    updatedAt: new Date().toISOString(),
   }
   save(KEYS.USER, updated)
   return { ...updated, shieldUsed }
 }
 
 export function addXP(user, amount) {
-  const updated = { ...user, xp: user.xp + amount, totalCards: user.totalCards + 1 }
+  const updated = { ...user, xp: user.xp + amount, totalCards: user.totalCards + 1, updatedAt: new Date().toISOString() }
   save(KEYS.USER, updated)
   return updated
+}
+
+export function clearAll() {
+  localStorage.removeItem(KEYS.USER)
+  localStorage.removeItem(KEYS.DECKS)
 }
 
 // Decks
