@@ -287,7 +287,9 @@ export default function App() {
         <SessionComplete
           results={sessionResults}
           user={user}
+          authUser={authUser}
           onDone={handleSessionDone}
+          onShowAuth={() => setShowAuth(true)}
         />
       )}
       {screen === 'companion' && companionDeckId && (

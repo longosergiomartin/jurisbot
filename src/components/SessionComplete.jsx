@@ -12,7 +12,7 @@ const CONFETTI_PIECES = [
 
 const STREAK_MILESTONES = [7, 14, 30, 60, 100, 365]
 
-export default function SessionComplete({ results, user, onDone }) {
+export default function SessionComplete({ results, user, authUser, onDone, onShowAuth }) {
   const { correct, wrong, total, timeSeconds, xpEarned, levelUp, shieldUsed } = results
 
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0
@@ -197,13 +197,46 @@ export default function SessionComplete({ results, user, onDone }) {
           </div>
         )}
 
-        <button
-          className="btn btn-primary"
-          onClick={onDone}
-          style={{ width: '100%', padding: '15px', fontSize: 16 }}
-        >
-          Volver al inicio
-        </button>
+        {authUser ? (
+          /* Usuario registrado — flujo de continuidad */
+          <button
+            className="btn btn-primary"
+            onClick={onDone}
+            style={{ width: '100%', padding: '15px', fontSize: 16 }}
+          >
+            Continuar estudiando →
+          </button>
+        ) : (
+          /* Invitado — flujo de conversión */
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <button
+              className="btn btn-primary"
+              onClick={onShowAuth}
+              style={{
+                width: '100%', padding: '15px', fontSize: 16,
+                background: 'linear-gradient(135deg, #7c3aed, #db2777)',
+                boxShadow: '0 4px 20px rgba(124,58,237,0.4)',
+              }}
+            >
+              ☁️ Crear cuenta para no perder tu progreso
+            </button>
+            <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', margin: 0, lineHeight: 1.5 }}>
+              Tus puntos, escudos y mazos se perderán si limpiás el caché.<br />
+              Guardalos gratis en la nube.
+            </p>
+            <button
+              onClick={onDone}
+              style={{
+                background: 'none', border: 'none',
+                color: 'var(--text-muted)', fontSize: 13,
+                cursor: 'pointer', textDecoration: 'underline',
+                padding: '4px', fontFamily: 'inherit',
+              }}
+            >
+              Volver al inicio sin guardar
+            </button>
+          </div>
+        )}
 
       </div>
     </div>
