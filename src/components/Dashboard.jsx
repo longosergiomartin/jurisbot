@@ -415,6 +415,42 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
           )
         })()}
 
+        {/* Guest persistent banner */}
+        {!authUser && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(251,191,36,0.14) 0%, rgba(249,115,22,0.12) 100%)',
+            border: '1px solid rgba(251,191,36,0.4)',
+            borderRadius: 16,
+            padding: '14px 16px',
+            marginBottom: 20,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 12,
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: '#fbbf24', marginBottom: 3 }}>
+                ⚠️ Modo invitado
+              </div>
+              <div style={{ fontSize: 12, color: 'rgba(251,191,36,0.8)', lineHeight: 1.5 }}>
+                Si cambiás de dispositivo o limpiás el navegador, perderás tus mazos y rachas.
+              </div>
+            </div>
+            <button
+              className="btn"
+              onClick={onShowAuth}
+              style={{
+                background: 'linear-gradient(135deg, #f59e0b, #f97316)',
+                color: '#fff', fontSize: 12, padding: '8px 14px',
+                borderRadius: 10, fontWeight: 700,
+                whiteSpace: 'nowrap', flexShrink: 0,
+              }}
+            >
+              Guardar gratis ☁️
+            </button>
+          </div>
+        )}
+
         {/* Decks list */}
         <div style={{ marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>

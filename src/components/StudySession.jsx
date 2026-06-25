@@ -4,7 +4,7 @@ import SocraticSession from './SocraticSession'
 import PomodoroTimer from './PomodoroTimer'
 
 const RATING_CONFIG = [
-  { value: 1, label: 'No lo sabía', emoji: '❌', color: 'var(--danger)', bg: 'var(--danger-dim)', hint: 'Kuma te lo mostrará pronto de nuevo' },
+  { value: 1, label: 'Otra vez', emoji: '🔄', color: 'var(--danger)', bg: 'var(--danger-dim)', hint: 'Volverá a aparecer pronto' },
   { value: 2, label: 'Difícil', emoji: '😬', color: '#f97316', bg: 'rgba(249,115,22,0.12)', hint: 'Lo verás en unos días' },
   { value: 3, label: 'Bien', emoji: '✅', color: 'var(--success)', bg: 'var(--success-dim)', hint: '~1 semana hasta verlo de nuevo' },
   { value: 4, label: 'Fácil', emoji: '⭐', color: 'var(--accent)', bg: 'var(--accent-dim)', hint: 'Lo tenés dominado — intervalo largo' },
