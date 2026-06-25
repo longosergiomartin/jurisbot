@@ -256,6 +256,7 @@ export default function App() {
       {screen === 'preview' && activeDeckId && (
         <CardPreview
           deck={decks.find(d => d.id === activeDeckId)}
+          source={uploadSource}
           onStart={handlePreviewStart}
           onBack={() => setScreen('upload')}
         />
