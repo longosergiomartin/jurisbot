@@ -96,9 +96,8 @@ export async function insertSession(userId, deckId, { startTime, endTime, cardsS
 // ─── Migration: localStorage → Supabase ──────────────────────────────────────
 
 function getMaxCardReview(cards) {
-  if (!cards?.length) return new Date(0)
-  const dates = cards.filter(c => c.lastReview).map(c => new Date(c.lastReview))
-  return dates.length ? new Date(Math.max(...dates.map(d => d.getTime()))) : new Date(0)
+  if (!cards?.length) return 0
+  return cards.reduce((sum, c) => sum + (c.reps || 0), 0)
 }
 
 export async function migrateLocalToCloud(userId, localUser, localDecks) {
