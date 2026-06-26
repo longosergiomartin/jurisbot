@@ -55,7 +55,7 @@ export default function PaywallModal({ onClose, onUpgrade, upgrading, authUser, 
             borderRadius: 16, padding: '16px 20px', textAlign: 'center', marginBottom: 20,
           }}>
             <div style={{ fontSize: 28, fontWeight: 800, color: 'var(--primary-light)' }}>
-              $2.999 ARS<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-muted)' }}>/mes</span>
+              $12.000 ARS<span style={{ fontSize: 14, fontWeight: 400, color: 'var(--text-muted)' }}>/mes</span>
             </div>
             <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
               Descuento especial para los primeros 200 usuarios

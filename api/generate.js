@@ -6,6 +6,7 @@ export const config = { maxDuration: 60 }
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const CHUNK_SIZE = 2800
 const FREE_MONTHLY_DECKS = 3
+const MAX_TEXT_CHARS = 50000
 
 function buildInstructions(count) {
   return `Eres un experto en pedagogía y aprendizaje activo. Analiza el siguiente material educativo y genera exactamente ${count} tarjetas de estudio de alta calidad.
@@ -208,7 +209,10 @@ export default async function handler(req, res) {
       send({ type: 'progress', chunk: 1, total: 1, cards: allCards.length })
 
     } else {
-      const sourceText = text || docxText || urlText
+      const rawSource = text || docxText || urlText
+      const sourceText = rawSource.length > MAX_TEXT_CHARS
+        ? rawSource.slice(0, MAX_TEXT_CHARS)
+        : rawSource
       const chunks = chunkText(sourceText)
       const perChunk = Math.ceil(count / chunks.length)
 
