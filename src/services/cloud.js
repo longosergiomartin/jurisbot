@@ -68,6 +68,7 @@ export async function insertDeck(userId, deck) {
   }
 }
 
+export async function upsertCards(userId, deckId, cards) {
   await supabase.from('cards').upsert(
     cards.map(c => cardToDb(c, deckId, userId)),
     { onConflict: 'id' }
