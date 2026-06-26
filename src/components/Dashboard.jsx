@@ -22,7 +22,7 @@ function getSessionEstimate(totalDue) {
   return '~8 min'
 }
 
-export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck, authUser, syncing, lastSynced, onShowAuth, onSync, onDeleteDeck }) {
+export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck, authUser, syncing, lastSynced, onShowAuth, onSync, onDeleteDeck, onUpgrade, upgrading }) {
   const deckStats = useMemo(() => {
     return decks.map(deck => {
       const due = getDueCards(deck.cards)
@@ -447,6 +447,39 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
               }}
             >
               Guardar gratis ☁️
+            </button>
+          </div>
+        )}
+
+        {/* Pro upgrade banner — shown to logged-in free users */}
+        {authUser && user.plan === 'free' && (
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(139,92,246,0.14) 0%, rgba(34,211,238,0.1) 100%)',
+            border: '1px solid rgba(139,92,246,0.35)',
+            borderRadius: 16, padding: '14px 16px', marginBottom: 20,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+          }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 700, fontSize: 13, color: 'var(--primary-light)', marginBottom: 3 }}>
+                ✨ Cognify Pro
+              </div>
+              <div style={{ fontSize: 12, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                Mazos y chats con Kuma ilimitados, sincronización en todos tus dispositivos.
+              </div>
+            </div>
+            <button
+              className="btn"
+              onClick={onUpgrade}
+              disabled={upgrading}
+              style={{
+                background: 'linear-gradient(135deg, var(--primary), var(--teal))',
+                color: '#fff', fontSize: 12, padding: '8px 14px',
+                borderRadius: 10, fontWeight: 700,
+                whiteSpace: 'nowrap', flexShrink: 0,
+                opacity: upgrading ? 0.7 : 1,
+              }}
+            >
+              {upgrading ? 'Redirigiendo...' : 'Actualizar ✨'}
             </button>
           </div>
         )}
