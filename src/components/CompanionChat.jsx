@@ -25,10 +25,18 @@ export default function CompanionChat({ deck, onClose, onPaywall }) {
   }, [])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(HISTORY_KEY(deck.id), JSON.stringify(messages))
-    } catch {}
-  }, [messages])
+    const updateHeight = () => {
+      const h = window.visualViewport?.height ?? window.innerHeight
+      document.documentElement.style.setProperty('--chat-height', `${h}px`)
+    }
+    updateHeight()
+    window.visualViewport?.addEventListener('resize', updateHeight)
+    window.visualViewport?.addEventListener('scroll', updateHeight)
+    return () => {
+      window.visualViewport?.removeEventListener('resize', updateHeight)
+      window.visualViewport?.removeEventListener('scroll', updateHeight)
+    }
+  }, [])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
