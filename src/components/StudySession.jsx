@@ -425,7 +425,7 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
                   </p>
                   <p style={{ fontSize: 12, color: 'var(--text-soft)', lineHeight: 1.6 }}>
                     Sé honesto — tu calificación le dice a Kuma cuándo mostrarte esta tarjeta de nuevo.{' '}
-                    <strong style={{ color: 'var(--danger)' }}>❌ No lo sabía</strong> = pronto,{' '}
+                    <strong style={{ color: 'var(--danger)' }}>🔄 Otra vez</strong> = pronto,{' '}
                     <strong style={{ color: 'var(--accent)' }}>⭐ Fácil</strong> = en semanas.
                   </p>
                 </div>
