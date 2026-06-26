@@ -25,6 +25,7 @@ export default function App() {
   const [sessionResults, setSessionResults] = useState(null)
   const [companionDeckId, setCompanionDeckId] = useState(null)
   const [authUser, setAuthUser] = useState(null)
+  const [authSession, setAuthSession] = useState(null)
   const [showAuth, setShowAuth] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [lastSynced, setLastSynced] = useState(null)
@@ -52,6 +53,7 @@ export default function App() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         setAuthUser(session.user)
+        setAuthSession(session)
         syncFromCloud(session.user, u, d)
       }
     })
@@ -60,6 +62,7 @@ export default function App() {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       const su = session?.user ?? null
       setAuthUser(su)
+      setAuthSession(session)
       if (su) {
         const localUser = storage.getUser()
         const localDecks = storage.getDecks()
@@ -126,12 +129,17 @@ export default function App() {
     if (!authUser || upgrading) return
     setUpgrading(true)
     try {
-      const { data: { session } } = await supabase.auth.getSession()
+      const token = authSession?.access_token
+      if (!token) {
+        alert('Tu sesión expiró. Volvé a iniciar sesión.')
+        setUpgrading(false)
+        return
+      }
       const res = await fetch('/api/subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       })
       const data = await res.json()
