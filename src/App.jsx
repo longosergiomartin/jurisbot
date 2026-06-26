@@ -12,7 +12,7 @@ import * as storage from './services/storage'
 import { getDueCards } from './services/fsrs'
 import { getLevel } from './services/levels'
 import { supabase, isSupabaseEnabled } from './services/supabase'
-import { fetchProfile, fetchDecks, upsertProfile, upsertCards, migrateLocalToCloud, insertSession } from './services/cloud'
+import { fetchProfile, fetchDecks, upsertProfile, upsertCards, migrateLocalToCloud, insertSession, deleteDeck as deleteDeckFromCloud } from './services/cloud'
 import { DEMO_DECK, DEMO_CARDS } from './data/demoCards'
 
 export default function App() {
@@ -212,9 +212,12 @@ export default function App() {
     setScreen('dashboard')
   }
 
-  function handleDeleteDeck(deckId) {
+  async function handleDeleteDeck(deckId) {
     const updatedDecks = storage.deleteDeck(deckId)
     setDecks(updatedDecks)
+    if (authUser) {
+      try { await deleteDeckFromCloud(authUser.id, deckId) } catch (err) { console.error('Delete deck cloud error:', err) }
+    }
   }
 
   function handleStudyDeck(deckId) {
