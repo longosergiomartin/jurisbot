@@ -37,11 +37,10 @@ export default function Auth({ onClose }) {
     setError(null)
     const { error: err } = await supabase.auth.signInWithOtp({
       email: email.trim(),
-      options: { emailRedirectTo: window.location.origin },
     })
     setLoading(false)
     if (err) {
-      setError(`Error: ${err.message || err.status || JSON.stringify(err)}`)
+      setError(`Error: ${err.message || err.code || err.status || JSON.stringify(err, Object.getOwnPropertyNames(err))}`)
     } else {
       setSent(true)
     }
