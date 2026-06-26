@@ -500,7 +500,7 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {deckStats.map(deck => (
-                <DeckCard key={deck.id} deck={deck} onStudy={onStudy} onCompanion={onCompanion} onDelete={onDeleteDeck} />
+                <DeckCard key={deck.id} deck={deck} onStudy={onStudy} onCompanion={onCompanion} onDelete={onDeleteDeck} isPro={user?.plan === 'pro'} />
               ))}
             </div>
           )}
@@ -548,7 +548,7 @@ function getGoalStatus(goal, progress, total, learned) {
   }
 }
 
-function DeckCard({ deck, onStudy, onCompanion, onDelete }) {
+function DeckCard({ deck, onStudy, onCompanion, onDelete, isPro }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const progress = deck.total > 0 ? Math.round((deck.learned / deck.total) * 100) : 0
   const nextDue = deck.dueCount === 0
@@ -738,23 +738,25 @@ function DeckCard({ deck, onStudy, onCompanion, onDelete }) {
           >
             🐶 Charlar
           </button>
-          {/* UX-11: Delete button */}
-          <button
-            onClick={e => { e.stopPropagation(); setConfirmDelete(true) }}
-            title="Eliminar mazo"
-            style={{
-              background: 'rgba(239,68,68,0.08)',
-              border: '1px solid rgba(239,68,68,0.2)',
-              borderRadius: 10,
-              padding: '9px 10px',
-              color: 'var(--danger)',
-              fontSize: 15,
-              cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}
-          >
-            🗑️
-          </button>
+          {/* UX-11: Delete button — solo visible para Pro */}
+          {isPro && (
+            <button
+              onClick={e => { e.stopPropagation(); setConfirmDelete(true) }}
+              title="Eliminar mazo"
+              style={{
+                background: 'rgba(239,68,68,0.08)',
+                border: '1px solid rgba(239,68,68,0.2)',
+                borderRadius: 10,
+                padding: '9px 10px',
+                color: 'var(--danger)',
+                fontSize: 15,
+                cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}
+            >
+              🗑️
+            </button>
+          )}        {/* ← agregar esta línea */}
         </div>
       </div>
     </div>
