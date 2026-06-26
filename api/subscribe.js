@@ -1,7 +1,7 @@
 import { getAuthUser, supabaseAdmin } from './_supabase.js'
 
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN
-const MP_PLAN_PRICE = Number(process.env.MP_PLAN_PRICE) || 2999
+const MP_PLAN_PRICE = Number(process.env.MP_PLAN_PRICE) || 12000
 const APP_URL = process.env.APP_URL || 'https://jurisbot-nine.vercel.app'
 
 export default async function handler(req, res) {
