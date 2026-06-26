@@ -66,7 +66,7 @@ export default function Upload({ onReady, onBack }) {
     if (!file) return
     const meta = getFileMeta(file)
     if (!meta) { alert('Solo se aceptan PDF, Word (.docx) o imágenes (jpg, png, webp).'); return }
-    if (file.size > 10 * 1024 * 1024) { alert('El archivo no puede superar 10 MB.'); return }
+    if (file.size > 3 * 1024 * 1024) { alert('El archivo no puede superar 3 MB.'); return }
     const reader = new FileReader()
     reader.onload = e => {
       const base64 = e.target.result.split(',')[1]
