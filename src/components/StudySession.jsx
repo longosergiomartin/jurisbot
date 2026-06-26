@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { scheduleCard } from '../services/fsrs'
 import SocraticSession from './SocraticSession'
-import PomodoroTimer from './PomodoroTimer'
+
 
 const RATING_CONFIG = [
   { value: 1, label: 'Otra vez', emoji: '🔄', color: 'var(--danger)', bg: 'var(--danger-dim)', hint: 'Volverá a aparecer pronto' },
@@ -152,11 +152,6 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
   if (!current) return null
 
   const mcqExplanation = current.back || current.explanation || ''
-
-  return (
-    <>
-      {/* UX-09: Pomodoro only for sessions of 8+ cards */}
-      {cards.length >= 8 && <PomodoroTimer autoStart={false} />}
 
       {showSocratic && (
         <SocraticSession
