@@ -5,7 +5,7 @@ export const config = { maxDuration: 60 }
 
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const CHUNK_SIZE = 2800
-const FREE_MONTHLY_DECKS = 3
+const FREE_MONTHLY_DECKS = 1
 const MAX_TEXT_CHARS = 50000
 
 function buildInstructions(count) {
@@ -168,15 +168,20 @@ export default async function handler(req, res) {
         .eq('user_id', authUser.id)
         .gte('created_at', startOfMonth.toISOString())
 
-      if ((count || 0) >= FREE_MONTHLY_DECKS) {
-        return res.status(403).json({
-          error: `Alcanzaste el límite de ${FREE_MONTHLY_DECKS} mazos por mes del plan gratuito.`,
-          code: 'FREE_LIMIT_REACHED',
-          limit: FREE_MONTHLY_DECKS,
-        })
-      }
-    }
+    if (!profile || profile.plan === 'free') {
+     const { count } = await supabaseAdmin
+       .from('decks')
+       .select('*', { count: 'exact', head: true })
+       .eq('user_id', authUser.id)
+
+    if ((count || 0) >= FREE_MAX_DECKS) {
+      return res.status(403).json({
+       error: 'El plan gratuito incluye 1 mazo. Eliminá el tuyo o actualizá a Pro para crear más.',
+       code: 'FREE_LIMIT_REACHED',
+       limit: FREE_MAX_DECKS,
+    })
   }
+}
 
   // Switch to SSE streaming mode
   res.setHeader('Content-Type', 'text/event-stream')
