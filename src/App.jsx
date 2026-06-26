@@ -28,6 +28,16 @@ export default function App() {
   const [showAuth, setShowAuth] = useState(false)
   const [syncing, setSyncing] = useState(false)
   const [lastSynced, setLastSynced] = useState(null)
+  const [upgrading, setUpgrading] = useState(false)
+  const [upgradedBanner, setUpgradedBanner] = useState(false)
+
+  useEffect(() => {
+    if (window.location.search.includes('upgraded=true')) {
+      setUpgradedBanner(true)
+      window.history.replaceState({}, '', window.location.pathname)
+      setTimeout(() => setUpgradedBanner(false), 6000)
+    }
+  }, [])
 
   useEffect(() => {
     const u = storage.getUser()
@@ -110,6 +120,31 @@ export default function App() {
       console.error('Push sync error:', err)
     }
     setSyncing(false)
+  }
+
+  async function handleUpgrade() {
+    if (!authUser || upgrading) return
+    setUpgrading(true)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const res = await fetch('/api/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+        },
+      })
+      const data = await res.json()
+      if (data.checkoutUrl) {
+        window.location.href = data.checkoutUrl
+      } else {
+        alert(data.error || 'No se pudo iniciar el pago.')
+        setUpgrading(false)
+      }
+    } catch {
+      alert('Error al conectar con el servicio de pago.')
+      setUpgrading(false)
+    }
   }
 
   function handleSetupComplete(name) {
@@ -261,6 +296,17 @@ export default function App() {
           onBack={() => setScreen('upload')}
         />
       )}
+      {upgradedBanner && (
+        <div style={{
+          position: 'fixed', top: 16, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 1000, background: 'linear-gradient(135deg, var(--primary), var(--teal))',
+          color: '#fff', padding: '12px 24px', borderRadius: 14, fontWeight: 700,
+          fontSize: 14, boxShadow: '0 4px 24px rgba(139,92,246,0.4)',
+          animation: 'pop 0.3s ease',
+        }}>
+          ✨ ¡Bienvenido a Cognify Pro! Tu cuenta ya está activa.
+        </div>
+      )}
       {screen === 'dashboard' && user && (
         <Dashboard
           user={user}
@@ -274,6 +320,8 @@ export default function App() {
           onShowAuth={() => setShowAuth(true)}
           onSync={pushToCloud}
           onDeleteDeck={handleDeleteDeck}
+          onUpgrade={handleUpgrade}
+          upgrading={upgrading}
         />
       )}
       {screen === 'study' && (
