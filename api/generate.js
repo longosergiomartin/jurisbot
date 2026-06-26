@@ -1,9 +1,11 @@
 import mammoth from 'mammoth'
+import { getAuthUser, supabaseAdmin } from './_supabase.js'
 
 export const config = { maxDuration: 60 }
 
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const CHUNK_SIZE = 2800
+const FREE_MONTHLY_DECKS = 3
 
 function buildInstructions(count) {
   return `Eres un experto en pedagogía y aprendizaje activo. Analiza el siguiente material educativo y genera exactamente ${count} tarjetas de estudio de alta calidad.
@@ -145,6 +147,33 @@ export default async function handler(req, res) {
     } catch (err) {
       console.error('URL fetch error:', err)
       return res.status(400).json({ error: 'No se pudo acceder a la URL. Verificá que sea accesible.' })
+    }
+  }
+
+  // Plan limit check (authenticated users only)
+  const authUser = await getAuthUser(req)
+  if (authUser) {
+    const { data: profile } = await supabaseAdmin
+      .from('profiles').select('plan').eq('id', authUser.id).single()
+
+    if (!profile || profile.plan === 'free') {
+      const startOfMonth = new Date()
+      startOfMonth.setDate(1)
+      startOfMonth.setHours(0, 0, 0, 0)
+
+      const { count } = await supabaseAdmin
+        .from('decks')
+        .select('*', { count: 'exact', head: true })
+        .eq('user_id', authUser.id)
+        .gte('created_at', startOfMonth.toISOString())
+
+      if ((count || 0) >= FREE_MONTHLY_DECKS) {
+        return res.status(403).json({
+          error: `Alcanzaste el límite de ${FREE_MONTHLY_DECKS} mazos por mes del plan gratuito.`,
+          code: 'FREE_LIMIT_REACHED',
+          limit: FREE_MONTHLY_DECKS,
+        })
+      }
     }
   }
 
