@@ -19,7 +19,7 @@ export async function upsertProfile(userId, profile) {
     last_shield_week: profile.lastShieldWeek ?? null,
     plan: profile.plan ?? 'free',
     updated_at: new Date().toISOString(),
-  })
+  }, { onConflict: 'id' })
 }
 
 // ─── Decks + Cards ────────────────────────────────────────────────────────────
@@ -62,17 +62,22 @@ export async function insertDeck(userId, deck) {
 
   if (deck.cards?.length) {
     await supabase.from('cards').upsert(
-      deck.cards.map(c => cardToDb(c, deck.id, userId))
+      deck.cards.map(c => cardToDb(c, deck.id, userId)),
+      { onConflict: 'id' }
     )
   }
 }
 
 export async function upsertCards(userId, deckId, cards) {
   await supabase.from('cards').upsert(
-    cards.map(c => cardToDb(c, deckId, userId))
+    cards.map(c => cardToDb(c, deckId, userId)),
+    { onConflict: 'id' }
   )
 }
-
+export async function deleteDeck(userId, deckId) {
+  await supabase.from('cards').delete().eq('deck_id', deckId).eq('user_id', userId)
+  await supabase.from('decks').delete().eq('id', deckId).eq('user_id', userId)
+}
 // ─── Sessions (analytics) ─────────────────────────────────────────────────────
 
 export async function insertSession(userId, deckId, { startTime, endTime, cardsStudied, correctAnswers }) {
