@@ -18,7 +18,7 @@ const PROGRESS_CHIPS = [
   { label: 'FSRS calibrado ✓', threshold: 4, color: 'var(--accent)',        bg: 'var(--accent-dim)',   border: 'rgba(251,191,36,0.3)'  },
 ]
 
-export default function Processing({ source, onComplete, onError }) {
+export default function Processing({ source, onComplete, onError, onPaywall }) {
   const [msgIndex, setMsgIndex] = useState(0)
   const [dots, setDots] = useState('.')
   const [error, setError] = useState(null)
@@ -64,8 +64,7 @@ export default function Processing({ source, onComplete, onError }) {
     }
 
     if (res.status === 403) {
-      const data = await res.json().catch(() => ({}))
-      setError(data.error || 'Límite del plan alcanzado. Actualizá tu plan para continuar.')
+      onPaywall?.()
       return
     }
     if (res.status === 429) {

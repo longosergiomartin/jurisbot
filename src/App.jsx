@@ -7,6 +7,7 @@ import CardPreview from './components/CardPreview'
 import StudySession from './components/StudySession'
 import SessionComplete from './components/SessionComplete'
 import CompanionChat from './components/CompanionChat'
+import PaywallModal from './components/PaywallModal'
 import Auth from './components/Auth'
 import * as storage from './services/storage'
 import { getDueCards } from './services/fsrs'
@@ -31,6 +32,7 @@ export default function App() {
   const [lastSynced, setLastSynced] = useState(null)
   const [upgrading, setUpgrading] = useState(false)
   const [upgradedBanner, setUpgradedBanner] = useState(false)
+  const [showPaywall, setShowPaywall] = useState(false)
 
   useEffect(() => {
     if (window.location.search.includes('upgraded=true')) {
@@ -295,6 +297,7 @@ export default function App() {
           source={uploadSource}
           onComplete={handleDeckCreated}
           onError={() => setScreen('upload')}
+          onPaywall={() => setShowPaywall(true)}
         />
       )}
       {screen === 'preview' && activeDeckId && (
@@ -354,10 +357,20 @@ export default function App() {
         <CompanionChat
           deck={decks.find(d => d.id === companionDeckId)}
           onClose={() => setScreen('dashboard')}
+          onPaywall={() => setShowPaywall(true)}
         />
       )}
       {showAuth && (
         <Auth onClose={() => setShowAuth(false)} />
+      )}
+      {showPaywall && (
+        <PaywallModal
+          onClose={() => setShowPaywall(false)}
+          onUpgrade={handleUpgrade}
+          upgrading={upgrading}
+          authUser={authUser}
+          onShowAuth={() => { setShowPaywall(false); setShowAuth(true) }}
+        />
       )}
     </>
   )
