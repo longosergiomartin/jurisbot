@@ -1,21 +1,75 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase, isSupabaseEnabled } from '../services/supabase'
 
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID
+
 export default function Auth({ onClose }) {
-  const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [gsiReady, setGsiReady] = useState(false)
+  const btnRef = useRef(null)
+
+  useEffect(() => {
+    if (!isSupabaseEnabled() || !GOOGLE_CLIENT_ID) return
+
+    let cancelled = false
+
+    function init() {
+      if (cancelled) return
+      window.google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: async ({ credential }) => {
+          setError(null)
+          const { error: err } = await supabase.auth.signInWithIdToken({
+            provider: 'google',
+            token: credential,
+          })
+          if (err) {
+            setError('No se pudo conectar con Google. Intentá de nuevo.')
+          } else {
+            onClose()
+          }
+        },
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      })
+      setGsiReady(true)
+    }
+
+    if (window.google?.accounts?.id) {
+      init()
+    } else {
+      const timer = setInterval(() => {
+        if (window.google?.accounts?.id) {
+          clearInterval(timer)
+          init()
+        }
+      }, 100)
+      return () => { cancelled = true; clearInterval(timer) }
+    }
+  }, [onClose])
+
+  useEffect(() => {
+    if (gsiReady && btnRef.current) {
+      window.google.accounts.id.renderButton(btnRef.current, {
+        theme: 'outline',
+        size: 'large',
+        text: 'continue_with',
+        locale: 'es',
+        width: 320,
+      })
+    }
+  }, [gsiReady])
+
+  const overlayStyle = {
+    position: 'fixed', inset: 0, zIndex: 999,
+    background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: 20,
+  }
 
   if (!isSupabaseEnabled()) {
     return (
-      <div
-        style={{
-          position: 'fixed', inset: 0, zIndex: 999,
-          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          padding: 20,
-        }}
-        onClick={e => { if (e.target === e.currentTarget) onClose() }}
-      >
+      <div style={overlayStyle} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
         <div className="card animate-pop" style={{ maxWidth: 380, width: '100%', padding: '32px 28px', textAlign: 'center' }}>
           <div style={{ fontSize: 52, marginBottom: 16 }}>🔧</div>
           <h2 style={{ fontSize: 20, fontWeight: 800, marginBottom: 8 }}>Sincronización no disponible</h2>
@@ -28,30 +82,8 @@ export default function Auth({ onClose }) {
     )
   }
 
-  async function handleGoogleLogin() {
-    setLoading(true)
-    setError(null)
-    const { error: err } = await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin },
-    })
-    if (err) {
-      setError('No se pudo conectar con Google. Intentá de nuevo.')
-      setLoading(false)
-    }
-    // On success, browser redirects to Google — no need to setLoading(false)
-  }
-
   return (
-    <div
-      style={{
-        position: 'fixed', inset: 0, zIndex: 999,
-        background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: 20,
-      }}
-      onClick={e => { if (e.target === e.currentTarget) onClose() }}
-    >
+    <div style={overlayStyle} onClick={e => { if (e.target === e.currentTarget) onClose() }}>
       <div className="card animate-pop" style={{ maxWidth: 380, width: '100%', padding: '32px 28px', textAlign: 'center' }}>
         <div style={{ fontSize: 52, marginBottom: 16 }}>🐶</div>
         <h2 style={{ fontSize: 22, fontWeight: 800, marginBottom: 8 }}>Guardar tu progreso</h2>
@@ -63,33 +95,25 @@ export default function Auth({ onClose }) {
           <p style={{ fontSize: 13, color: 'var(--danger)', marginBottom: 12 }}>{error}</p>
         )}
 
-        <button
-          onClick={handleGoogleLogin}
-          disabled={loading}
+        {/* Google renders their branded button here — popup flow, no Supabase redirect */}
+        <div
+          ref={btnRef}
           style={{
-            width: '100%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10,
-            background: '#fff',
-            border: '1.5px solid #e2e8f0',
-            borderRadius: 12,
-            padding: '13px 16px',
-            fontSize: 15, fontWeight: 600,
-            color: '#1a1a2e',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            opacity: loading ? 0.7 : 1,
-            fontFamily: 'inherit',
-            marginBottom: 10,
+            display: 'flex', justifyContent: 'center',
+            marginBottom: 10, minHeight: 44,
           }}
-        >
-          <svg width="20" height="20" viewBox="0 0 48 48">
-            <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
-            <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
-            <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
-            <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
-            <path fill="none" d="M0 0h48v48H0z"/>
-          </svg>
-          {loading ? 'Conectando...' : 'Continuar con Google'}
-        </button>
+        />
+
+        {!gsiReady && GOOGLE_CLIENT_ID && (
+          <div style={{
+            width: '100%', height: 44, borderRadius: 12,
+            background: 'var(--surface-2)', marginBottom: 10,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            color: 'var(--text-muted)', fontSize: 13,
+          }}>
+            Cargando...
+          </div>
+        )}
 
         <button
           className="btn btn-ghost"
