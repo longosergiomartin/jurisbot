@@ -45,7 +45,7 @@ export function scheduleCard(card, rating, now = new Date()) {
 
     if (rating === 1) {
       lapses++
-      stability = Math.max(0.1, stability * 0.2)
+      stability = stability * Math.max(0.3, 1 - difficulty / 10)
       state = 'relearning'
     } else {
       stability = updateStability(stability, difficulty, r, rating)
