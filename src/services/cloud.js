@@ -74,7 +74,10 @@ export async function upsertCards(userId, deckId, cards) {
     { onConflict: 'id' }
   )
 }
-
+export async function deleteDeck(userId, deckId) {
+  await supabase.from('cards').delete().eq('deck_id', deckId).eq('user_id', userId)
+  await supabase.from('decks').delete().eq('id', deckId).eq('user_id', userId)
+}
 // ─── Sessions (analytics) ─────────────────────────────────────────────────────
 
 export async function insertSession(userId, deckId, { startTime, endTime, cardsStudied, correctAnswers }) {
