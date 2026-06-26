@@ -3,7 +3,7 @@ import { supabase } from '../services/supabase'
 
 const HISTORY_KEY = (deckId) => `chat_history_${deckId}`
 
-export default function CompanionChat({ deck, onClose }) {
+export default function CompanionChat({ deck, onClose, onPaywall }) {
   const [messages, setMessages] = useState(() => {
     try {
       const saved = localStorage.getItem(HISTORY_KEY(deck.id))
@@ -56,13 +56,7 @@ export default function CompanionChat({ deck, onClose }) {
       })
 
       if (res.status === 403) {
-        const data = await res.json().catch(() => ({}))
-        if (!isGreeting) {
-          setMessages(prev => [...prev, {
-            role: 'assistant',
-            content: `🔒 ${data.error || 'Límite diario alcanzado'}. ¡Volvé mañana o actualizá tu plan para chatear sin límites! 🐾`,
-          }])
-        }
+        onPaywall?.()
         setLoading(false)
         return
       }
