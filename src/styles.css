@@ -307,6 +307,7 @@ input, textarea {
   align-items: stretch;
   justify-content: center;
   animation: fadeIn 0.2s ease;
+  overflow: hidden;
 }
 
 .socratic-container {
@@ -315,6 +316,7 @@ input, textarea {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  height: var(--chat-height, 100dvh);
   background: var(--surface);
   border-left: 1px solid var(--border);
   border-right: 1px solid var(--border);
@@ -376,6 +378,7 @@ input, textarea {
   display: flex;
   gap: 8px;
   padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom));
   border-top: 1px solid var(--border);
   background: var(--card);
   align-items: flex-end;
