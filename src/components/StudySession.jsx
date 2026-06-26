@@ -151,8 +151,10 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
 
   if (!current) return null
 
-  const mcqExplanation = current.back || current.explanation || ''
+const mcqExplanation = current.back || current.explanation || ''
 
+  return (
+    <>
       {showSocratic && (
         <SocraticSession
           concept={question}
