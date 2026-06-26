@@ -1,5 +1,7 @@
 import mammoth from 'mammoth'
 
+export const config = { maxDuration: 60 }
+
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const CHUNK_SIZE = 2800
 
@@ -146,47 +148,60 @@ export default async function handler(req, res) {
     }
   }
 
+  // Switch to SSE streaming mode
+  res.setHeader('Content-Type', 'text/event-stream')
+  res.setHeader('Cache-Control', 'no-cache, no-transform')
+  res.setHeader('Connection', 'keep-alive')
+  res.setHeader('X-Accel-Buffering', 'no')
+  res.flushHeaders()
+
+  function send(data) {
+    res.write(`data: ${JSON.stringify(data)}\n\n`)
+  }
+
   try {
-    let cards = []
+    let allCards = []
 
     if (fileData?.mimeType === 'application/pdf') {
-      // PDF: send natively to Claude — no chunking needed
       const content = [
         { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileData.base64 } },
         { type: 'text', text: buildInstructions(count) },
       ]
-      cards = await callClaude(content)
+      allCards = await callClaude(content)
+      send({ type: 'progress', chunk: 1, total: 1, cards: allCards.length })
 
     } else if (fileData?.mimeType && IMAGE_MIME_TYPES.includes(fileData.mimeType)) {
-      // Image: send natively to Claude — no chunking needed
       const content = [
         { type: 'image', source: { type: 'base64', media_type: fileData.mimeType, data: fileData.base64 } },
         { type: 'text', text: buildInstructions(count) },
       ]
-      cards = await callClaude(content)
+      allCards = await callClaude(content)
+      send({ type: 'progress', chunk: 1, total: 1, cards: allCards.length })
 
     } else {
-      // Plain text (typed, DOCX-extracted, or URL-scraped) — apply chunking
       const sourceText = text || docxText || urlText
       const chunks = chunkText(sourceText)
       const perChunk = Math.ceil(count / chunks.length)
 
-      for (const chunk of chunks) {
-        const content = [{ type: 'text', text: `${buildInstructions(perChunk)}\n\nMATERIAL:\n${chunk}` }]
+      for (let i = 0; i < chunks.length; i++) {
+        const content = [{ type: 'text', text: `${buildInstructions(perChunk)}\n\nMATERIAL:\n${chunks[i]}` }]
         const chunkCards = await callClaude(content)
-        cards.push(...chunkCards)
+        allCards.push(...chunkCards)
+        send({ type: 'progress', chunk: i + 1, total: chunks.length, cards: allCards.length })
       }
 
-      cards = cards.slice(0, count)
+      allCards = allCards.slice(0, count)
     }
 
-    if (cards.length === 0) {
-      return res.status(500).json({ error: 'No se generaron tarjetas válidas' })
+    if (allCards.length === 0) {
+      send({ type: 'error', message: 'No se generaron tarjetas válidas. Probá con un texto más largo o diferente.' })
+    } else {
+      send({ type: 'done', cards: allCards })
     }
-
-    res.status(200).json({ cards })
   } catch (err) {
     console.error('Generate handler error:', err)
-    res.status(500).json({ error: 'Error interno del servidor' })
+    send({ type: 'error', message: 'Error interno del servidor.' })
   }
+
+  res.end()
 }

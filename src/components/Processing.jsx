@@ -10,19 +10,18 @@ const MESSAGES = [
   '¡Casi listo!',
 ]
 
-// Chips that appear sequentially as progress advances
-// Each chip appears when msgIndex >= threshold
 const PROGRESS_CHIPS = [
-  { label: 'Análisis ✓',        threshold: 1, color: 'var(--primary-light)', bg: 'var(--primary-dim)',  border: 'rgba(139,92,246,0.3)' },
-  { label: 'Flashcards ✓',      threshold: 2, color: 'var(--teal)',          bg: 'var(--teal-dim)',     border: 'rgba(34,211,238,0.3)'  },
-  { label: 'Preguntas ✓',       threshold: 3, color: 'var(--pink-light)',    bg: 'var(--pink-dim)',     border: 'rgba(244,63,94,0.25)'  },
-  { label: 'FSRS calibrado ✓',  threshold: 4, color: 'var(--accent)',        bg: 'var(--accent-dim)',   border: 'rgba(251,191,36,0.3)'  },
+  { label: 'Análisis ✓',       threshold: 1, color: 'var(--primary-light)', bg: 'var(--primary-dim)',  border: 'rgba(139,92,246,0.3)' },
+  { label: 'Flashcards ✓',     threshold: 2, color: 'var(--teal)',          bg: 'var(--teal-dim)',     border: 'rgba(34,211,238,0.3)'  },
+  { label: 'Preguntas ✓',      threshold: 3, color: 'var(--pink-light)',    bg: 'var(--pink-dim)',     border: 'rgba(244,63,94,0.25)'  },
+  { label: 'FSRS calibrado ✓', threshold: 4, color: 'var(--accent)',        bg: 'var(--accent-dim)',   border: 'rgba(251,191,36,0.3)'  },
 ]
 
 export default function Processing({ source, onComplete, onError }) {
   const [msgIndex, setMsgIndex] = useState(0)
   const [dots, setDots] = useState('.')
   const [error, setError] = useState(null)
+  const [chunkInfo, setChunkInfo] = useState(null) // { current, total, cards }
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -51,6 +50,7 @@ export default function Processing({ source, onComplete, onError }) {
         body: JSON.stringify({
           text: source.text,
           fileData: source.fileData,
+          url: source.url,
           cardCount: source.cardCount,
         }),
       })
@@ -64,33 +64,77 @@ export default function Processing({ source, onComplete, onError }) {
       return
     }
     if (!res.ok) {
-      setError('No pudimos leer ese material — probá pegando el texto directamente.')
+      try {
+        const data = await res.json()
+        setError(data.error || 'No pudimos leer ese material — probá pegando el texto directamente.')
+      } catch {
+        setError('No pudimos leer ese material — probá pegando el texto directamente.')
+      }
       return
     }
 
+    // Parse SSE stream
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
     try {
-      const data = await res.json()
-      if (!data.cards || !Array.isArray(data.cards) || data.cards.length === 0) {
-        setError('No pudimos extraer tarjetas de ese material — probá con un texto más largo o diferente.')
-        return
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+        buffer += decoder.decode(value, { stream: true })
+
+        const events = buffer.split('\n\n')
+        buffer = events.pop() // keep incomplete last chunk
+
+        for (const eventStr of events) {
+          const dataLine = eventStr.split('\n').find(l => l.startsWith('data: '))
+          if (!dataLine) continue
+
+          let payload
+          try { payload = JSON.parse(dataLine.slice(6)) } catch { continue }
+
+          if (payload.type === 'progress') {
+            setChunkInfo({ current: payload.chunk, total: payload.total, cards: payload.cards })
+            // Drive the cosmetic message index by real chunk progress
+            const idx = Math.round((payload.chunk / payload.total) * (MESSAGES.length - 2))
+            setMsgIndex(idx)
+
+          } else if (payload.type === 'done') {
+            if (!payload.cards?.length) {
+              setError('No se generaron tarjetas válidas. Probá con un texto diferente.')
+              return
+            }
+            const deckId = `deck_${Date.now()}`
+            const cards = payload.cards.map(c => createCard(c, deckId))
+            const deck = {
+              id: deckId,
+              title: source.title,
+              createdAt: new Date().toISOString(),
+              goal: source.goal || null,
+              chapter: source.chapter || null,
+              cards,
+            }
+            onComplete(deck)
+
+          } else if (payload.type === 'error') {
+            setError(payload.message || 'Ocurrió un error inesperado — volvé a intentarlo.')
+          }
+        }
       }
-      const deckId = `deck_${Date.now()}`
-      const cards = data.cards.map(c => createCard(c, deckId))
-      const deck = {
-        id: deckId,
-        title: source.title,
-        createdAt: new Date().toISOString(),
-        goal: source.goal || null,
-        chapter: source.chapter || null,
-        cards,
-      }
-      onComplete(deck)
     } catch {
       setError('Ocurrió un error inesperado — volvé a intentarlo.')
     }
   }
 
-  const progress = ((msgIndex + 1) / MESSAGES.length) * 100
+  const isMultiChunk = chunkInfo && chunkInfo.total > 1
+  const displayMessage = isMultiChunk
+    ? `Procesando fragmento ${chunkInfo.current} de ${chunkInfo.total}...`
+    : MESSAGES[msgIndex]
+
+  const progress = chunkInfo
+    ? (chunkInfo.current / chunkInfo.total) * 100
+    : ((msgIndex + 1) / MESSAGES.length) * 100
 
   if (error) {
     return (
@@ -102,7 +146,7 @@ export default function Processing({ source, onComplete, onError }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <button
               className="btn btn-primary"
-              onClick={() => { setError(null); generate() }}
+              onClick={() => { setError(null); setChunkInfo(null); generate() }}
               style={{ width: '100%', padding: '13px', fontSize: 15 }}
             >
               🔄 Reintentar
@@ -129,12 +173,26 @@ export default function Processing({ source, onComplete, onError }) {
         <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>
           Kuma está trabajando{dots}
         </h2>
-        <p style={{ color: 'var(--text-muted)', marginBottom: 32, fontSize: 14, minHeight: 20, transition: 'all 0.3s' }}>
-          {MESSAGES[msgIndex]}
+        <p style={{ color: 'var(--text-muted)', marginBottom: isMultiChunk ? 8 : 32, fontSize: 14, minHeight: 20, transition: 'all 0.3s' }}>
+          {displayMessage}
         </p>
 
+        {/* Live card counter for multi-chunk */}
+        {isMultiChunk && chunkInfo.cards > 0 && (
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            background: 'var(--success-dim)', border: '1px solid rgba(34,197,94,0.3)',
+            borderRadius: 20, padding: '4px 14px', fontSize: 13, fontWeight: 700,
+            color: 'var(--success)', marginBottom: 24,
+            animation: 'pop 0.3s ease',
+          }}>
+            🃏 {chunkInfo.cards} tarjetas encontradas
+          </div>
+        )}
+        {isMultiChunk && chunkInfo.cards === 0 && <div style={{ marginBottom: 24 }} />}
+
         <div className="progress-bar" style={{ marginBottom: 32 }}>
-          <div className="progress-fill" style={{ width: `${progress}%` }} />
+          <div className="progress-fill" style={{ width: `${progress}%`, transition: 'width 0.5s ease' }} />
         </div>
 
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center', minHeight: 36 }}>
@@ -144,14 +202,10 @@ export default function Processing({ source, onComplete, onError }) {
               <span
                 key={chip.label}
                 style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  padding: '5px 13px',
-                  borderRadius: 20,
-                  fontSize: 13,
-                  fontWeight: 600,
-                  background: chip.bg,
-                  color: chip.color,
+                  display: 'inline-flex', alignItems: 'center',
+                  padding: '5px 13px', borderRadius: 20,
+                  fontSize: 13, fontWeight: 600,
+                  background: chip.bg, color: chip.color,
                   border: `1px solid ${chip.border}`,
                   opacity: visible ? 1 : 0,
                   transform: visible ? 'translateY(0) scale(1)' : 'translateY(8px) scale(0.9)',

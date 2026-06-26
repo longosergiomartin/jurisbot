@@ -18,6 +18,9 @@ function deriveTitle(text, fileName, urlValue) {
   return ''
 }
 
+const TEXT_MIN = 200
+const TEXT_MAX = 20000
+
 const INPUT_TABS = [
   { id: 'text', label: '✏️ Texto' },
   { id: 'file', label: '📎 Archivo' },
@@ -97,8 +100,17 @@ export default function Upload({ onReady, onBack }) {
     })
   }
 
+  const textLen = text.length
+  const textError = inputMode === 'text'
+    ? textLen > 0 && textLen < TEXT_MIN
+      ? `Mínimo ${TEXT_MIN} caracteres (faltan ${TEXT_MIN - textLen})`
+      : textLen > TEXT_MAX
+        ? `Límite de ${TEXT_MAX.toLocaleString()} caracteres superado`
+        : null
+    : null
+
   const hasContent =
-    (inputMode === 'text' && text.trim().length > 0) ||
+    (inputMode === 'text' && textLen >= TEXT_MIN && textLen <= TEXT_MAX) ||
     (inputMode === 'file' && !!fileData) ||
     (inputMode === 'url'  && urlValue.trim().length > 0)
 
@@ -163,9 +175,20 @@ export default function Upload({ onReady, onBack }) {
               onFocus={e => e.target.style.borderColor = 'var(--primary)'}
               onBlur={e => e.target.style.borderColor = 'var(--border)'}
             />
-            {text.length > 0 && (
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'right', marginTop: 3 }}>
-                {text.length} caracteres
+            {textLen > 0 && (
+              <div style={{
+                fontSize: 12, marginTop: 5,
+                display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+              }}>
+                <span style={{ color: textError ? 'var(--danger)' : 'var(--text-muted)' }}>
+                  {textError || ''}
+                </span>
+                <span style={{
+                  color: textLen > TEXT_MAX ? 'var(--danger)' : textLen < TEXT_MIN ? 'var(--text-muted)' : 'var(--success)',
+                  fontVariantNumeric: 'tabular-nums',
+                }}>
+                  {textLen.toLocaleString()} / {TEXT_MAX.toLocaleString()}
+                </span>
               </div>
             )}
           </div>
