@@ -1,20 +1,33 @@
 import { useState, useEffect, useRef } from 'react'
 
+const HISTORY_KEY = (deckId) => `chat_history_${deckId}`
+
 export default function CompanionChat({ deck, onClose }) {
-  const [messages, setMessages] = useState(() => [
-    { role: 'assistant', content: `¡Hola! Soy Kuma 🐾 Estoy lista para explorar "${deck.title}" con vos. ¿Por dónde arrancamos?` },
-  ])
+  const [messages, setMessages] = useState(() => {
+    try {
+      const saved = localStorage.getItem(HISTORY_KEY(deck.id))
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return [{ role: 'assistant', content: `¡Hola! Soy Kuma 🐾 Estoy lista para explorar "${deck.title}" con vos. ¿Por dónde arrancamos?` }]
+  })
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
   const isMobile = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  const hasHistory = messages.length > 1
 
   useEffect(() => {
-    // Fetch a personalized opening from the API in the background;
-    // the static placeholder above is already visible to the user.
+    if (hasHistory) return
+    // No saved history — fetch a personalized opening from the API
     sendToKuma([], true)
   }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(HISTORY_KEY(deck.id), JSON.stringify(messages))
+    } catch {}
+  }, [messages])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
