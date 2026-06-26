@@ -1,55 +1,10 @@
 import mammoth from 'mammoth'
 
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
+const CHUNK_SIZE = 2800
 
-export default async function handler(req, res) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
-
-  const { text, fileData, url, cardCount = 15 } = req.body
-
-  if (!text && !fileData && !url) {
-    return res.status(400).json({ error: 'Se requiere texto, archivo o URL' })
-  }
-
-  const count = Math.min(Math.max(Number(cardCount) || 15, 5), 30)
-
-  // Extract text from DOCX before building the message
-  let docxText = null
-  if (fileData?.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-    try {
-      const buffer = Buffer.from(fileData.base64, 'base64')
-      const result = await mammoth.extractRawText({ buffer })
-      docxText = result.value?.trim()
-      if (!docxText) return res.status(400).json({ error: 'No se pudo extraer texto del archivo Word.' })
-    } catch (err) {
-      console.error('DOCX extract error:', err)
-      return res.status(400).json({ error: 'Error al procesar el archivo Word.' })
-    }
-  }
-
-  // Fetch and extract text from URL
-  let urlText = null
-  if (url) {
-    try {
-      const urlRes = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
-      if (!urlRes.ok) {
-        return res.status(400).json({ error: `No se pudo acceder a la URL (${urlRes.status}).` })
-      }
-      const html = await urlRes.text()
-      urlText = html
-        .replace(/<script[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[\s\S]*?<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s{2,}/g, ' ')
-        .trim()
-      if (!urlText) return res.status(400).json({ error: 'No se pudo extraer texto de la URL.' })
-    } catch (err) {
-      console.error('URL fetch error:', err)
-      return res.status(400).json({ error: 'No se pudo acceder a la URL. Verificá que sea accesible.' })
-    }
-  }
-
-  const instructions = `Eres un experto en pedagogía y aprendizaje activo. Analiza el siguiente material educativo y genera exactamente ${count} tarjetas de estudio de alta calidad.
+function buildInstructions(count) {
+  return `Eres un experto en pedagogía y aprendizaje activo. Analiza el siguiente material educativo y genera exactamente ${count} tarjetas de estudio de alta calidad.
 
 TIPOS DE TARJETAS:
 - "flashcard": Concepto clave al frente ("front"), explicación clara al dorso ("back"). Ideal para definiciones, procesos, fórmulas.
@@ -63,6 +18,8 @@ REGLAS PEDAGÓGICAS:
 4. Las respuestas deben ser completas pero concisas (máx 3 oraciones).
 5. Varía entre conceptos fundamentales, aplicaciones y conexiones entre ideas.
 6. Incluye aproximadamente 40% flashcards, 25% MCQ y 35% short_answer.
+7. IDIOMA: Genera todas las tarjetas exactamente en el mismo idioma del texto original. No traduzcas ni mezcles idiomas bajo ninguna circunstancia.
+8. FUENTES: Basate única y exclusivamente en el texto proporcionado. No incluyas información externa, juicios de valor ni suposiciones que no estén explícitamente en el material.
 
 FORMATO DE RESPUESTA — solo JSON, sin markdown, sin texto adicional:
 [
@@ -86,83 +43,148 @@ FORMATO DE RESPUESTA — solo JSON, sin markdown, sin texto adicional:
 ]
 
 Genera las ${count} tarjetas ahora. Responde SOLO con el array JSON, sin texto antes ni después.`
+}
 
-  const sourceText = text || docxText || urlText
-  let messageContent
+function chunkText(text) {
+  if (text.length <= CHUNK_SIZE) return [text]
 
-  if (fileData?.mimeType === 'application/pdf') {
-    messageContent = [
-      {
-        type: 'document',
-        source: {
-          type: 'base64',
-          media_type: 'application/pdf',
-          data: fileData.base64,
-        },
-      },
-      { type: 'text', text: instructions },
-    ]
-  } else if (fileData?.mimeType && IMAGE_MIME_TYPES.includes(fileData.mimeType)) {
-    messageContent = [
-      {
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: fileData.mimeType,
-          data: fileData.base64,
-        },
-      },
-      { type: 'text', text: instructions },
-    ]
-  } else {
-    messageContent = [{ type: 'text', text: `${instructions}\n\nMATERIAL:\n${sourceText}` }]
+  const chunks = []
+  let remaining = text.trim()
+
+  while (remaining.length > CHUNK_SIZE) {
+    let cut = remaining.lastIndexOf('\n\n', CHUNK_SIZE)
+    if (cut < CHUNK_SIZE * 0.4) cut = remaining.lastIndexOf('\n', CHUNK_SIZE)
+    if (cut < CHUNK_SIZE * 0.4) cut = remaining.lastIndexOf(' ', CHUNK_SIZE)
+    if (cut <= 0) cut = CHUNK_SIZE
+
+    chunks.push(remaining.slice(0, cut).trim())
+    remaining = remaining.slice(cut).trim()
+  }
+
+  if (remaining.length > 0) chunks.push(remaining)
+  return chunks
+}
+
+function validateCards(cards) {
+  if (!Array.isArray(cards)) return []
+  return cards.filter(c => {
+    if (c.type === 'flashcard') return c.front && c.back
+    if (c.type === 'mcq') return c.front && Array.isArray(c.options) && c.options.length >= 2 && typeof c.correctIndex === 'number'
+    if (c.type === 'short_answer') return c.front && c.back
+    return false
+  })
+}
+
+async function callClaude(messageContent) {
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-beta': 'pdfs-2024-09-25',
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-6',
+      max_tokens: 4096,
+      messages: [{ role: 'user', content: messageContent }],
+    }),
+  })
+
+  const data = await response.json()
+  if (!response.ok) throw new Error(data.error?.message || 'Anthropic API error')
+
+  const rawText = data.content?.find(b => b.type === 'text')?.text || ''
+  const jsonMatch = rawText.match(/\[[\s\S]*\]/)
+  if (!jsonMatch) throw new Error('No JSON array in response')
+
+  return validateCards(JSON.parse(jsonMatch[0]))
+}
+
+export default async function handler(req, res) {
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+
+  const { text, fileData, url, cardCount = 15 } = req.body
+
+  if (!text && !fileData && !url) {
+    return res.status(400).json({ error: 'Se requiere texto, archivo o URL' })
+  }
+
+  const count = Math.min(Math.max(Number(cardCount) || 15, 5), 30)
+
+  // Extract text from DOCX
+  let docxText = null
+  if (fileData?.mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+    try {
+      const buffer = Buffer.from(fileData.base64, 'base64')
+      const result = await mammoth.extractRawText({ buffer })
+      docxText = result.value?.trim()
+      if (!docxText) return res.status(400).json({ error: 'No se pudo extraer texto del archivo Word.' })
+    } catch (err) {
+      console.error('DOCX extract error:', err)
+      return res.status(400).json({ error: 'Error al procesar el archivo Word.' })
+    }
+  }
+
+  // Fetch and extract text from URL
+  let urlText = null
+  if (url) {
+    try {
+      const urlRes = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } })
+      if (!urlRes.ok) return res.status(400).json({ error: `No se pudo acceder a la URL (${urlRes.status}).` })
+      const html = await urlRes.text()
+      urlText = html
+        .replace(/<script[\s\S]*?<\/script>/gi, '')
+        .replace(/<style[\s\S]*?<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s{2,}/g, ' ')
+        .trim()
+      if (!urlText) return res.status(400).json({ error: 'No se pudo extraer texto de la URL.' })
+    } catch (err) {
+      console.error('URL fetch error:', err)
+      return res.status(400).json({ error: 'No se pudo acceder a la URL. Verificá que sea accesible.' })
+    }
   }
 
   try {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-beta': 'pdfs-2024-09-25',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 4096,
-        messages: [{ role: 'user', content: messageContent }],
-      }),
-    })
+    let cards = []
 
-    const data = await response.json()
+    if (fileData?.mimeType === 'application/pdf') {
+      // PDF: send natively to Claude — no chunking needed
+      const content = [
+        { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileData.base64 } },
+        { type: 'text', text: buildInstructions(count) },
+      ]
+      cards = await callClaude(content)
 
-    if (!response.ok) {
-      console.error('Anthropic error:', data)
-      return res.status(500).json({ error: data.error?.message || 'Error al generar tarjetas' })
+    } else if (fileData?.mimeType && IMAGE_MIME_TYPES.includes(fileData.mimeType)) {
+      // Image: send natively to Claude — no chunking needed
+      const content = [
+        { type: 'image', source: { type: 'base64', media_type: fileData.mimeType, data: fileData.base64 } },
+        { type: 'text', text: buildInstructions(count) },
+      ]
+      cards = await callClaude(content)
+
+    } else {
+      // Plain text (typed, DOCX-extracted, or URL-scraped) — apply chunking
+      const sourceText = text || docxText || urlText
+      const chunks = chunkText(sourceText)
+      const perChunk = Math.ceil(count / chunks.length)
+
+      for (const chunk of chunks) {
+        const content = [{ type: 'text', text: `${buildInstructions(perChunk)}\n\nMATERIAL:\n${chunk}` }]
+        const chunkCards = await callClaude(content)
+        cards.push(...chunkCards)
+      }
+
+      cards = cards.slice(0, count)
     }
 
-    const rawText = data.content?.find(b => b.type === 'text')?.text || ''
-
-    const jsonMatch = rawText.match(/\[[\s\S]*\]/)
-    if (!jsonMatch) {
-      console.error('No JSON array found in response:', rawText.slice(0, 200))
-      return res.status(500).json({ error: 'Respuesta inesperada de la IA' })
-    }
-
-    const cards = JSON.parse(jsonMatch[0])
-
-    if (!Array.isArray(cards) || cards.length === 0) {
+    if (cards.length === 0) {
       return res.status(500).json({ error: 'No se generaron tarjetas válidas' })
     }
 
-    const validCards = cards.filter(c => {
-      if (c.type === 'flashcard') return c.front && c.back
-      if (c.type === 'mcq') return c.front && Array.isArray(c.options) && c.options.length >= 2 && typeof c.correctIndex === 'number'
-      if (c.type === 'short_answer') return c.front && c.back
-      return false
-    })
-
-    res.status(200).json({ cards: validCards })
+    res.status(200).json({ cards })
   } catch (err) {
     console.error('Generate handler error:', err)
     res.status(500).json({ error: 'Error interno del servidor' })
