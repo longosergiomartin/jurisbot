@@ -8,7 +8,7 @@ export async function fetchProfile(userId) {
 }
 
 export async function upsertProfile(userId, profile) {
-  await supabase.from('profiles').upsert({
+const { error } = await supabase.from('profiles').upsert({
     id: userId,
     name: profile.name,
     streak: profile.streak,
@@ -20,6 +20,7 @@ export async function upsertProfile(userId, profile) {
     plan: profile.plan ?? 'free',
     updated_at: new Date().toISOString(),
   }, { onConflict: 'id' })
+  if (error) throw error
 }
 
 // ─── Decks + Cards ────────────────────────────────────────────────────────────
@@ -69,10 +70,11 @@ export async function insertDeck(userId, deck) {
 }
 
 export async function upsertCards(userId, deckId, cards) {
-  await supabase.from('cards').upsert(
+  const { error } = await supabase.from('cards').upsert(
     cards.map(c => cardToDb(c, deckId, userId)),
     { onConflict: 'id' }
   )
+  if (error) throw error
 }
 export async function deleteDeck(userId, deckId) {
   await supabase.from('cards').delete().eq('deck_id', deckId).eq('user_id', userId)

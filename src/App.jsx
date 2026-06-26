@@ -246,20 +246,18 @@ export default function App() {
 
     // Sync updated cards + profile + session log to cloud in background
     if (authUser) {
+      const endTime = new Date().toISOString()
+      try { await upsertCards(authUser.id, activeDeckId, results.updatedCards) } catch (err) { console.error('upsertCards error:', err) }
+      try { await upsertProfile(authUser.id, userWithXP) } catch (err) { console.error('upsertProfile error:', err) }
       try {
-        const endTime = new Date().toISOString()
-        await upsertCards(authUser.id, activeDeckId, results.updatedCards)
-        await upsertProfile(authUser.id, userWithXP)
         await insertSession(authUser.id, activeDeckId, {
           startTime: results.startTime,
           endTime,
           cardsStudied: results.total,
           correctAnswers: results.correct,
         })
-        setLastSynced(new Date())
-      } catch (err) {
-        console.error('Post-session sync error:', err)
-      }
+      } catch (err) { console.error('insertSession error:', err) }
+      setLastSynced(new Date())
     }
   }
 
