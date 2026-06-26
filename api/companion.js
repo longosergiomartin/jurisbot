@@ -1,11 +1,48 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { getAuthUser, supabaseAdmin } from './_supabase.js'
 
 const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+
+const FREE_DAILY_COMPANION = 20
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).end()
 
   const { deckTitle, cards, messages } = req.body
+
+  // Plan limit check (authenticated users only)
+  const authUser = await getAuthUser(req)
+  if (authUser) {
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('plan, companion_daily_count, companion_reset_date')
+      .eq('id', authUser.id)
+      .single()
+
+    if (profile && profile.plan === 'free') {
+      const today = new Date().toISOString().slice(0, 10)
+      const isSameDay = profile.companion_reset_date === today
+      const count = isSameDay ? (profile.companion_daily_count || 0) : 0
+
+      if (count >= FREE_DAILY_COMPANION) {
+        return res.status(403).json({
+          error: `Límite de ${FREE_DAILY_COMPANION} mensajes diarios con Kuma alcanzado.`,
+          code: 'KUMA_DAILY_LIMIT',
+          limit: FREE_DAILY_COMPANION,
+        })
+      }
+
+      // Increment counter
+      await supabaseAdmin
+        .from('profiles')
+        .update({
+          companion_daily_count: count + 1,
+          companion_reset_date: today,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', authUser.id)
+    }
+  }
 
   const cardContext = (cards || [])
     .slice(0, 50)

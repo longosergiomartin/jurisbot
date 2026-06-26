@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { createCard } from '../services/fsrs'
+import { supabase } from '../services/supabase'
 
 const MESSAGES = [
   'Leyendo tu material...',
@@ -42,11 +43,14 @@ export default function Processing({ source, onComplete, onError }) {
   }, [])
 
   async function generate() {
+    const { data: { session } } = await (supabase?.auth?.getSession() ?? Promise.resolve({ data: { session: null } }))
+    const authHeader = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+
     let res
     try {
       res = await fetch('/api/generate', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({
           text: source.text,
           fileData: source.fileData,
@@ -59,6 +63,11 @@ export default function Processing({ source, onComplete, onError }) {
       return
     }
 
+    if (res.status === 403) {
+      const data = await res.json().catch(() => ({}))
+      setError(data.error || 'Límite del plan alcanzado. Actualizá tu plan para continuar.')
+      return
+    }
     if (res.status === 429) {
       setError('Demasiadas solicitudes — esperá un momento y volvé a intentarlo.')
       return

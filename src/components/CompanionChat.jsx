@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
+import { supabase } from '../services/supabase'
 
 const HISTORY_KEY = (deckId) => `chat_history_${deckId}`
 
@@ -41,26 +42,40 @@ export default function CompanionChat({ deck, onClose }) {
       : currentMessages
 
     try {
+      const { data: { session } } = await (supabase?.auth?.getSession() ?? Promise.resolve({ data: { session: null } }))
+      const authHeader = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {}
+
       const res = await fetch('/api/companion', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeader },
         body: JSON.stringify({
           deckTitle: deck.title,
           cards: deck.cards,
           messages: apiMessages,
         }),
       })
+
+      if (res.status === 403) {
+        const data = await res.json().catch(() => ({}))
+        if (!isGreeting) {
+          setMessages(prev => [...prev, {
+            role: 'assistant',
+            content: `🔒 ${data.error || 'Límite diario alcanzado'}. ¡Volvé mañana o actualizá tu plan para chatear sin límites! 🐾`,
+          }])
+        }
+        setLoading(false)
+        return
+      }
+
       const data = await res.json()
       const reply = data.reply || '¡Hola! Estoy lista para charlar sobre el material. ¿Qué querés explorar? 🐾'
 
       if (isGreeting) {
-        // Replace the static placeholder with the real API greeting
         setMessages([{ role: 'assistant', content: reply }])
       } else {
         setMessages(prev => [...prev, { role: 'assistant', content: reply }])
       }
     } catch {
-      // Keep the static placeholder on greeting failure; show error for user messages
       if (!isGreeting) {
         setMessages(prev => [...prev, { role: 'assistant', content: '¡Ups! Algo falló. Probá de nuevo 🐾' }])
       }
