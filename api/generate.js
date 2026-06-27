@@ -5,7 +5,6 @@ export const config = { maxDuration: 60 }
 
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const CHUNK_SIZE = 2800
-const FREE_MONTHLY_DECKS = 1
 const MAX_TEXT_CHARS = 50000
 
 function buildInstructions(count) {
@@ -151,37 +150,34 @@ export default async function handler(req, res) {
     }
   }
 
-  // Plan limit check (authenticated users only)
+// Plan limit check (authenticated users only)
   const authUser = await getAuthUser(req)
   if (authUser) {
     const { data: profile } = await supabaseAdmin
       .from('profiles').select('plan').eq('id', authUser.id).single()
 
     if (!profile || profile.plan === 'free') {
-      const startOfMonth = new Date()
-      startOfMonth.setDate(1)
-      startOfMonth.setHours(0, 0, 0, 0)
+      const { data: genResult, error: genError } = await supabaseAdmin
+        .rpc('use_generation', { user_uuid: authUser.id })
 
-      const { count } = await supabaseAdmin
-        .from('decks')
-        .select('*', { count: 'exact', head: true })
-        .eq('user_id', authUser.id)
-        .gte('created_at', startOfMonth.toISOString())
+      if (genError) {
+        console.error('use_generation error:', genError)
+        return res.status(500).json({ error: 'Error interno verificando límite.' })
+      }
 
-    if (!profile || profile.plan === 'free') {
-     const { count } = await supabaseAdmin
-       .from('decks')
-       .select('*', { count: 'exact', head: true })
-       .eq('user_id', authUser.id)
-
-    if ((count || 0) >= FREE_MAX_DECKS) {
-      return res.status(403).json({
-       error: 'El plan gratuito incluye 1 mazo. Eliminá el tuyo o actualizá a Pro para crear más.',
-       code: 'FREE_LIMIT_REACHED',
-       limit: FREE_MAX_DECKS,
-    })
+      if (genResult?.error === 'LIMIT_REACHED') {
+        const isBonus = genResult.is_bonus
+        return res.status(403).json({
+          error: isBonus
+            ? 'Usaste tus 3 generaciones de bienvenida.'
+            : 'Alcanzaste tus 2 generaciones este mes.',
+          code: 'FREE_LIMIT_REACHED',
+          is_bonus: isBonus,
+          limit: genResult.max,
+        })
+      }
+    }
   }
-}
 
   // Switch to SSE streaming mode
   res.setHeader('Content-Type', 'text/event-stream')
