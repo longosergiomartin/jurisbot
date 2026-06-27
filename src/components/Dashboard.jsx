@@ -490,6 +490,23 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
             <h3 style={{ fontSize: 16, fontWeight: 600 }}>Mis mazos</h3>
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{decks.length} mazo{decks.length !== 1 ? 's' : ''}</span>
           </div>
+          {authUser && user?.plan !== 'pro' && (() => {
+            const used = user?.monthlyGenerationsUsed ?? 0
+            const remaining = Math.max(0, 2 - used)
+            const color = remaining === 0 ? 'var(--danger)' : remaining === 1 ? 'var(--accent)' : 'var(--teal)'
+            const bg = remaining === 0 ? 'rgba(239,68,68,0.08)' : remaining === 1 ? 'var(--accent-dim)' : 'var(--teal-dim)'
+            const border = remaining === 0 ? 'rgba(239,68,68,0.25)' : remaining === 1 ? 'rgba(251,191,36,0.3)' : 'rgba(34,211,238,0.2)'
+            return (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '7px 12px', background: bg, border: `1px solid ${border}`, borderRadius: 10, marginBottom: 12, fontSize: 12, color }}>
+                {remaining === 0 ? '⚠️' : '✨'}
+                <span style={{ fontWeight: 600 }}>
+                  {remaining === 0
+                    ? 'Sin generaciones disponibles este mes'
+                    : `${remaining} generación${remaining !== 1 ? 'es' : ''} disponible${remaining !== 1 ? 's' : ''} este mes`}
+                </span>
+              </div>
+            )
+          })()}
 
           {decks.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '40px 20px', color: 'var(--text-muted)', background: 'var(--card)', borderRadius: 16, border: '1px dashed var(--border)' }}>
@@ -500,7 +517,7 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {deckStats.map(deck => (
-                <DeckCard key={deck.id} deck={deck} onStudy={onStudy} onCompanion={onCompanion} onDelete={onDeleteDeck} isPro={user?.plan === 'pro'} />
+                <DeckCard key={deck.id} deck={deck} onStudy={onStudy} onCompanion={onCompanion} onDelete={onDeleteDeck} />
               ))}
             </div>
           )}
@@ -548,7 +565,7 @@ function getGoalStatus(goal, progress, total, learned) {
   }
 }
 
-function DeckCard({ deck, onStudy, onCompanion, onDelete, isPro }) {
+function DeckCard({ deck, onStudy, onCompanion, onDelete }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const progress = deck.total > 0 ? Math.round((deck.learned / deck.total) * 100) : 0
   const nextDue = deck.dueCount === 0
@@ -738,9 +755,7 @@ function DeckCard({ deck, onStudy, onCompanion, onDelete, isPro }) {
           >
             🐶 Charlar
           </button>
-          {/* UX-11: Delete button — solo visible para Pro */}
-          {isPro && (
-            <button
+          <button
               onClick={e => { e.stopPropagation(); setConfirmDelete(true) }}
               title="Eliminar mazo"
               style={{
@@ -756,7 +771,6 @@ function DeckCard({ deck, onStudy, onCompanion, onDelete, isPro }) {
             >
               🗑️
             </button>
-          )}        {/* ← agregar esta línea */}
         </div>
       </div>
     </div>
