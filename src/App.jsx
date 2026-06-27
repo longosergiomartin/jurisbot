@@ -33,6 +33,7 @@ export default function App() {
   const [upgrading, setUpgrading] = useState(false)
   const [upgradedBanner, setUpgradedBanner] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
+  const [paywallContext, setPaywallContext] = useState(null)
 
   useEffect(() => {
     if (window.location.search.includes('upgraded=true')) {
@@ -98,6 +99,7 @@ export default function App() {
           streakShields: cloudProfile.streak_shields ?? 1,
           lastShieldWeek: cloudProfile.last_shield_week ?? null,
           plan: cloudProfile.plan ?? 'free',
+          monthlyGenerationsUsed: cloudProfile.monthly_generations_used ?? 0,
         }
         storage.saveUser(merged)
         setUser(merged)
@@ -155,6 +157,21 @@ export default function App() {
       alert('Error al conectar con el servicio de pago.')
       setUpgrading(false)
     }
+  }
+  
+  function handleShowPaywall(ctx) {
+    setPaywallContext(ctx ?? null)
+    setShowPaywall(true)
+  }
+
+  function handleClosePaywall() {
+    setShowPaywall(false)
+    setPaywallContext(null)
+  }
+
+  function handlePaywallToAuth() {
+    setShowPaywall(false)
+    setShowAuth(true)
   }
 
   function handleSetupComplete(name) {
@@ -297,7 +314,7 @@ export default function App() {
           source={uploadSource}
           onComplete={handleDeckCreated}
           onError={() => setScreen('upload')}
-          onPaywall={() => setShowPaywall(true)}
+          onPaywall={handleShowPaywall}
         />
       )}
       {screen === 'preview' && activeDeckId && (
@@ -357,7 +374,7 @@ export default function App() {
         <CompanionChat
           deck={decks.find(d => d.id === companionDeckId)}
           onClose={() => setScreen('dashboard')}
-          onPaywall={() => setShowPaywall(true)}
+          onPaywall={handleShowPaywall}
         />
       )}
       {showAuth && (
@@ -365,11 +382,12 @@ export default function App() {
       )}
       {showPaywall && (
         <PaywallModal
-          onClose={() => setShowPaywall(false)}
+          context={paywallContext}
+          onClose={handleClosePaywall}
           onUpgrade={handleUpgrade}
           upgrading={upgrading}
           authUser={authUser}
-          onShowAuth={() => { setShowPaywall(false); setShowAuth(true) }}
+          onShowAuth={handlePaywallToAuth}
         />
       )}
     </>
