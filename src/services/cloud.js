@@ -27,6 +27,17 @@ const { error } = await supabase.from('profiles').upsert({
   if (error) throw error
 }
 
+export async function fetchSubscription(userId) {
+  const { data } = await supabase
+    .from('subscriptions')
+    .select('status, current_period_end, cancelled_at, mp_preapproval_id')
+    .eq('user_id', userId)
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .single()
+  return data || null
+}
+
 // ─── Decks + Cards ────────────────────────────────────────────────────────────
 
 export async function fetchDecks(userId) {
