@@ -4,9 +4,13 @@ import { supabase } from './supabase'
 
 export async function fetchProfile(userId) {
   const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-  return data
+  if (!data) return null
+  return {
+    ...data,
+    monthlyGenerationsUsed: data.monthly_generations_used ?? 0,
+    generationResetMonth: data.generation_reset_month ?? null,
+  }
 }
-
 export async function upsertProfile(userId, profile) {
 const { error } = await supabase.from('profiles').upsert({
     id: userId,
