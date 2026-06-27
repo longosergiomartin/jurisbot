@@ -4,6 +4,7 @@ import { getLevel } from '../services/levels'
 import WeeklyCalendar from './WeeklyCalendar'
 import { requestNotificationPermission, showReminderIfDue } from '../services/notifications'
 import SyncStatus from './SyncStatus'
+import SubscriptionCard from './SubscriptionCard'
 
 const KAI_MESSAGES = [
   name => `¡Hola ${name}! Tenés tarjetas esperando. Tu cerebro está listo para aprender.`,
@@ -23,7 +24,7 @@ function getSessionEstimate(totalDue) {
   return '~8 min'
 }
 
-export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck, authUser, syncState, lastSynced, onShowAuth, onRetry, onDeleteDeck, onUpgrade, upgrading }) {
+export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck, authUser, syncState, lastSynced, onShowAuth, onRetry, onDeleteDeck, onUpgrade, upgrading, subscription, onCancelSubscription }) {
   const deckStats = useMemo(() => {
     return decks.map(deck => {
       const due = getDueCards(deck.cards)
@@ -464,6 +465,11 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
               {upgrading ? 'Redirigiendo...' : 'Actualizar ✨'}
             </button>
           </div>
+        )}
+
+        {/* Subscription management — shown to Pro users */}
+        {authUser && user.plan === 'pro' && subscription && (
+          <SubscriptionCard subscription={subscription} onCancel={onCancelSubscription} />
         )}
 
         {/* Decks list */}

@@ -9,11 +9,12 @@ import SessionComplete from './components/SessionComplete'
 import CompanionChat from './components/CompanionChat'
 import PaywallModal from './components/PaywallModal'
 import Auth from './components/Auth'
+import CancelSubscriptionModal from './components/CancelSubscriptionModal'
 import * as storage from './services/storage'
 import { getDueCards } from './services/fsrs'
 import { getLevel } from './services/levels'
 import { supabase, isSupabaseEnabled } from './services/supabase'
-import { fetchProfile, fetchDecks, upsertProfile, upsertCards, migrateLocalToCloud, insertSession, deleteDeck as deleteDeckFromCloud } from './services/cloud'
+import { fetchProfile, fetchDecks, fetchSubscription, upsertProfile, upsertCards, migrateLocalToCloud, insertSession, deleteDeck as deleteDeckFromCloud } from './services/cloud'
 import { DEMO_DECK, DEMO_CARDS } from './data/demoCards'
 
 export default function App() {
@@ -42,6 +43,9 @@ export default function App() {
   const [upgradedBanner, setUpgradedBanner] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
   const [paywallContext, setPaywallContext] = useState(null)
+  const [subscription, setSubscription] = useState(null)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   useEffect(() => {
     if (window.location.search.includes('upgraded=true')) {
@@ -188,8 +192,12 @@ export default function App() {
       await migrateLocalToCloud(supabaseUser.id, localUser, localDecks)
 
       // Cloud is now the source of truth — load everything fresh
-      const cloudProfile = await fetchProfile(supabaseUser.id)
-      const cloudDecks = await fetchDecks(supabaseUser.id)
+      const [cloudProfile, cloudDecks, cloudSub] = await Promise.all([
+        fetchProfile(supabaseUser.id),
+        fetchDecks(supabaseUser.id),
+        fetchSubscription(supabaseUser.id),
+      ])
+      setSubscription(cloudSub)
 
       // Clear stale localStorage data (cloud is now canonical)
       storage.clearAll()
@@ -275,6 +283,38 @@ export default function App() {
   function handleClosePaywall() {
     setShowPaywall(false)
     setPaywallContext(null)
+  }
+
+  async function handleCancelSubscription(reason) {
+    if (!authUser || cancelling) return
+    setCancelling(true)
+    try {
+      const token = authSession?.access_token
+      const res = await fetch('/api/cancel-subscription', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        alert(data.error || 'No se pudo cancelar la suscripción.')
+        setCancelling(false)
+        return
+      }
+      // Update local subscription state — keep Pro access until period end
+      setSubscription(prev => ({
+        ...prev,
+        status: 'cancelled',
+        current_period_end: data.periodEnd || prev?.current_period_end,
+        cancelled_at: new Date().toISOString(),
+      }))
+      setShowCancelModal(false)
+    } catch {
+      alert('Error al conectar con el servidor.')
+    }
+    setCancelling(false)
   }
 
   function handlePaywallToAuth() {
@@ -491,6 +531,8 @@ export default function App() {
           onDeleteDeck={handleDeleteDeck}
           onUpgrade={handleUpgrade}
           upgrading={upgrading}
+          subscription={subscription}
+          onCancelSubscription={() => setShowCancelModal(true)}
         />
       )}
       {screen === 'study' && (
@@ -542,6 +584,14 @@ export default function App() {
           upgrading={upgrading}
           authUser={authUser}
           onShowAuth={handlePaywallToAuth}
+        />
+      )}
+      {showCancelModal && subscription && (
+        <CancelSubscriptionModal
+          subscription={subscription}
+          onClose={() => setShowCancelModal(false)}
+          onConfirm={handleCancelSubscription}
+          cancelling={cancelling}
         />
       )}
     </>

@@ -156,7 +156,24 @@ export default async function handler(req, res) {
     const { data: profile } = await supabaseAdmin
       .from('profiles').select('plan').eq('id', authUser.id).single()
 
-    if (!profile || profile.plan === 'free') {
+    // Lazy eval: Pro users whose subscription is cancelled and period has ended revert to free
+    let effectivePlan = profile?.plan ?? 'free'
+    if (effectivePlan === 'pro') {
+      const { data: sub } = await supabaseAdmin
+        .from('subscriptions')
+        .select('status, current_period_end')
+        .eq('user_id', authUser.id)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .single()
+      if (sub?.status === 'cancelled' && sub.current_period_end && new Date(sub.current_period_end) < new Date()) {
+        effectivePlan = 'free'
+        // Sync the profiles table so future checks are fast
+        await supabaseAdmin.from('profiles').update({ plan: 'free' }).eq('id', authUser.id)
+      }
+    }
+
+    if (!profile || effectivePlan === 'free') {
       const { data: genResult, error: genError } = await supabaseAdmin
         .rpc('use_generation', { user_uuid: authUser.id })
 

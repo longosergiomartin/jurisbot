@@ -46,14 +46,19 @@ export default async function handler(req, res) {
 
       const userId = preapproval.external_reference
       const isActive = preapproval.status === 'authorized'
+      const isCancelled = preapproval.status === 'cancelled'
 
       if (!userId) return res.status(400).json({ error: 'No external_reference' })
 
-      await supabaseAdmin
-        .from('profiles')
-        .update({ plan: isActive ? 'pro' : 'free' })
-        .eq('id', userId)
+      // Only upgrade to pro on authorized; never immediately downgrade on cancel (lazy eval)
+      if (isActive) {
+        await supabaseAdmin
+          .from('profiles')
+          .update({ plan: 'pro' })
+          .eq('id', userId)
+      }
 
+      const now = new Date().toISOString()
       await supabaseAdmin
         .from('subscriptions')
         .upsert({
@@ -61,7 +66,9 @@ export default async function handler(req, res) {
           mp_preapproval_id: preapproval.id,
           status: preapproval.status,
           plan: 'pro',
-          updated_at: new Date().toISOString(),
+          current_period_end: preapproval.next_payment_date || null,
+          cancelled_at: isCancelled ? now : null,
+          updated_at: now,
         }, { onConflict: 'mp_preapproval_id' })
 
       return res.status(200).json({ ok: true })
