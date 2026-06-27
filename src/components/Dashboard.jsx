@@ -3,6 +3,7 @@ import { getDueCards } from '../services/fsrs'
 import { getLevel } from '../services/levels'
 import WeeklyCalendar from './WeeklyCalendar'
 import { requestNotificationPermission, showReminderIfDue } from '../services/notifications'
+import SyncStatus from './SyncStatus'
 
 const KAI_MESSAGES = [
   name => `¡Hola ${name}! Tenés tarjetas esperando. Tu cerebro está listo para aprender.`,
@@ -22,7 +23,7 @@ function getSessionEstimate(totalDue) {
   return '~8 min'
 }
 
-export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck, authUser, syncing, lastSynced, onShowAuth, onSync, onDeleteDeck, onUpgrade, upgrading }) {
+export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck, authUser, syncState, lastSynced, onShowAuth, onRetry, onDeleteDeck, onUpgrade, upgrading }) {
   const deckStats = useMemo(() => {
     return decks.map(deck => {
       const due = getDueCards(deck.cards)
@@ -173,28 +174,9 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
                 🔔
               </button>
             )}
-            {/* Cloud sync button */}
+            {/* Cloud sync status */}
             {authUser ? (
-              <button
-                onClick={onSync}
-                disabled={syncing}
-                title={lastSynced ? `Última sincronización: ${lastSynced.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' })}` : 'Sincronizar'}
-                style={{
-                  background: 'var(--card)',
-                  border: '1px solid var(--border)',
-                  borderRadius: 20,
-                  padding: '6px 10px',
-                  fontSize: 14,
-                  cursor: syncing ? 'default' : 'pointer',
-                  color: 'var(--success)',
-                  fontFamily: 'inherit',
-                  lineHeight: 1,
-                  opacity: syncing ? 0.6 : 1,
-                  animation: syncing ? 'spin 1s linear infinite' : 'none',
-                }}
-              >
-                ☁️
-              </button>
+              <SyncStatus state={syncState} lastSynced={lastSynced} onRetry={onRetry} />
             ) : (
               <button
                 onClick={onShowAuth}

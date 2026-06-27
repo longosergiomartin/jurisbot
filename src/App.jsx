@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Welcome from './components/Welcome'
 import Upload from './components/Upload'
 import Processing from './components/Processing'
@@ -28,8 +28,16 @@ export default function App() {
   const [authUser, setAuthUser] = useState(null)
   const [authSession, setAuthSession] = useState(null)
   const [showAuth, setShowAuth] = useState(false)
-  const [syncing, setSyncing] = useState(false)
+  const [syncState, setSyncState] = useState(() => {
+    try {
+      if (typeof navigator !== 'undefined' && !navigator.onLine) return 'offline'
+      return localStorage.getItem('sync_pending_errors') ? 'error' : 'idle'
+    } catch { return 'idle' }
+  })
   const [lastSynced, setLastSynced] = useState(null)
+  const [showSyncToast, setShowSyncToast] = useState(false)
+  const syncQueueRef = useRef(null)
+  const authUserRef = useRef(null)
   const [upgrading, setUpgrading] = useState(false)
   const [upgradedBanner, setUpgradedBanner] = useState(false)
   const [showPaywall, setShowPaywall] = useState(false)
@@ -76,8 +84,105 @@ export default function App() {
     return () => subscription.unsubscribe()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
+  useEffect(() => {
+    function handleOffline() {
+      setSyncState('offline')
+    }
+    function handleOnline() {
+      if (authUserRef.current) {
+        retrySync()
+      } else {
+        setSyncState('idle')
+      }
+    }
+    window.addEventListener('offline', handleOffline)
+    window.addEventListener('online', handleOnline)
+    return () => {
+      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('online', handleOnline)
+    }
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  authUserRef.current = authUser
+
+  function getSyncQueue() {
+    if (!syncQueueRef.current) {
+      try {
+        const stored = localStorage.getItem('sync_pending_errors')
+        syncQueueRef.current = stored ? JSON.parse(stored) : { cards: null, profile: null, session: null }
+      } catch {
+        syncQueueRef.current = { cards: null, profile: null, session: null }
+      }
+    }
+    return syncQueueRef.current
+  }
+
+  function saveSyncQueue(q) {
+    syncQueueRef.current = q
+    try {
+      const hasPending = q.cards !== null || q.profile !== null || q.session !== null
+      if (hasPending) {
+        localStorage.setItem('sync_pending_errors', JSON.stringify(q))
+      } else {
+        localStorage.removeItem('sync_pending_errors')
+      }
+    } catch {}
+  }
+
+  async function retrySync() {
+    const u = authUserRef.current
+    if (!u) return
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+      setSyncState('offline')
+      return
+    }
+    const q = getSyncQueue()
+    if (!q.cards && !q.profile && !q.session) {
+      setSyncState('synced')
+      return
+    }
+    setSyncState('syncing')
+    const newQ = { ...q }
+    let anyFailed = false
+
+    if (q.cards) {
+      try {
+        const currentDecks = storage.getDecks()
+        const deck = currentDecks.find(d => d.id === q.cards.deckId)
+        if (deck) await upsertCards(u.id, q.cards.deckId, deck.cards)
+        newQ.cards = null
+      } catch { anyFailed = true }
+    }
+    if (q.profile) {
+      try {
+        const currentUser = storage.getUser()
+        if (currentUser) await upsertProfile(u.id, currentUser)
+        newQ.profile = null
+      } catch { anyFailed = true }
+    }
+    if (q.session) {
+      try {
+        await insertSession(u.id, q.session.deckId, {
+          startTime: q.session.startTime,
+          endTime: q.session.endTime,
+          cardsStudied: q.session.cardsStudied,
+          correctAnswers: q.session.correctAnswers,
+        })
+        newQ.session = null
+      } catch { anyFailed = true }
+    }
+
+    saveSyncQueue(newQ)
+    if (anyFailed) {
+      setSyncState('error')
+    } else {
+      setSyncState('synced')
+      setLastSynced(new Date())
+    }
+  }
+
   async function syncFromCloud(supabaseUser, localUser, localDecks) {
-    setSyncing(true)
+    setSyncState('syncing')
     try {
       // Always run migration: handles empty cloud, conflict resolution, and new decks
       await migrateLocalToCloud(supabaseUser.id, localUser, localDecks)
@@ -109,24 +214,27 @@ export default function App() {
         setDecks(cloudDecks)
       }
       setLastSynced(new Date())
+      setSyncState('synced')
     } catch (err) {
       console.error('Sync error:', err)
+      setSyncState('error')
     }
-    setSyncing(false)
   }
 
   async function pushToCloud() {
-    if (!authUser || syncing) return
-    setSyncing(true)
+    if (!authUser || syncState === 'syncing') return
+    setSyncState('syncing')
     try {
       const currentUser = storage.getUser()
       const currentDecks = storage.getDecks()
       await migrateLocalToCloud(authUser.id, currentUser, currentDecks)
+      saveSyncQueue({ cards: null, profile: null, session: null })
+      setSyncState('synced')
       setLastSynced(new Date())
     } catch (err) {
       console.error('Push sync error:', err)
+      setSyncState('error')
     }
-    setSyncing(false)
   }
 
   async function handleUpgrade() {
@@ -266,8 +374,22 @@ export default function App() {
     // Sync updated cards + profile + session log to cloud in background
     if (authUser) {
       const endTime = new Date().toISOString()
-      try { await upsertCards(authUser.id, activeDeckId, results.updatedCards) } catch (err) { console.error('upsertCards error:', err) }
-      try { await upsertProfile(authUser.id, userWithXP) } catch (err) { console.error('upsertProfile error:', err) }
+      setSyncState('syncing')
+      const q = { cards: null, profile: null, session: null }
+      let anyFailed = false
+
+      try {
+        await upsertCards(authUser.id, activeDeckId, results.updatedCards)
+      } catch {
+        anyFailed = true
+        q.cards = { deckId: activeDeckId }
+      }
+      try {
+        await upsertProfile(authUser.id, userWithXP)
+      } catch {
+        anyFailed = true
+        q.profile = true
+      }
       try {
         await insertSession(authUser.id, activeDeckId, {
           startTime: results.startTime,
@@ -275,8 +397,26 @@ export default function App() {
           cardsStudied: results.total,
           correctAnswers: results.correct,
         })
-      } catch (err) { console.error('insertSession error:', err) }
-      setLastSynced(new Date())
+      } catch {
+        anyFailed = true
+        q.session = {
+          deckId: activeDeckId,
+          startTime: results.startTime,
+          endTime,
+          cardsStudied: results.total,
+          correctAnswers: results.correct,
+        }
+      }
+
+      saveSyncQueue(q)
+      if (anyFailed) {
+        setSyncState('error')
+      } else {
+        setSyncState('synced')
+        setLastSynced(new Date())
+        setShowSyncToast(true)
+        setTimeout(() => setShowSyncToast(false), 5000)
+      }
     }
   }
 
@@ -344,10 +484,10 @@ export default function App() {
           onCompanion={handleOpenCompanion}
           onNewDeck={() => setScreen('upload')}
           authUser={authUser}
-          syncing={syncing}
+          syncState={syncState}
           lastSynced={lastSynced}
           onShowAuth={() => setShowAuth(true)}
-          onSync={pushToCloud}
+          onRetry={retrySync}
           onDeleteDeck={handleDeleteDeck}
           onUpgrade={handleUpgrade}
           upgrading={upgrading}
@@ -376,6 +516,20 @@ export default function App() {
           onClose={() => setScreen('dashboard')}
           onPaywall={handleShowPaywall}
         />
+      )}
+      {showSyncToast && authUser && (
+        <div style={{
+          position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 1000,
+          background: 'linear-gradient(135deg, var(--success), var(--teal))',
+          color: '#fff', padding: '12px 20px', borderRadius: 14, fontWeight: 600,
+          fontSize: 13, boxShadow: '0 4px 24px rgba(52,211,153,0.4)',
+          animation: 'pop 0.3s ease',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+        }}>
+          ☁️ Tu progreso de hoy está guardado en la nube. ¡Buena racha!
+        </div>
       )}
       {showAuth && (
         <Auth onClose={() => setShowAuth(false)} />
