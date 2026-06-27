@@ -160,10 +160,20 @@ export default function App() {
   }
   
   function handleShowPaywall(ctx) {
-  setPaywallContext(ctx ?? null)
-  setShowPaywall(true)
-}
-  
+    setPaywallContext(ctx ?? null)
+    setShowPaywall(true)
+  }
+
+  function handleClosePaywall() {
+    setShowPaywall(false)
+    setPaywallContext(null)
+  }
+
+  function handlePaywallToAuth() {
+    setShowPaywall(false)
+    setShowAuth(true)
+  }
+
   function handleSetupComplete(name) {
     const u = storage.createUser(name)
     setUser(u)
@@ -373,11 +383,11 @@ export default function App() {
       {showPaywall && (
         <PaywallModal
           context={paywallContext}
-          onClose={() => setShowPaywall(false); setPaywallContext(null) }}
+          onClose={handleClosePaywall}
           onUpgrade={handleUpgrade}
           upgrading={upgrading}
           authUser={authUser}
-          onShowAuth={() => { setShowPaywall(false); setShowAuth(true) }}
+          onShowAuth={handlePaywallToAuth}
         />
       )}
     </>
