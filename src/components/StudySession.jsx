@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { scheduleCard } from '../services/fsrs'
+import { scheduleCard, retrievability } from '../services/fsrs'
 import SocraticSession from './SocraticSession'
 
 const SpeechRecognitionAPI = typeof window !== 'undefined'
@@ -34,6 +34,7 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
   const [pendingRating, setPendingRating] = useState(null)
   const [updatedCards, setUpdatedCards] = useState([])
   const [results, setResults] = useState({ correct: 0, wrong: 0 })
+  const [xpBonus, setXpBonus] = useState(0)
   const [startTime] = useState(Date.now())
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [undoState, setUndoState] = useState(null)
@@ -50,6 +51,14 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
   const total = cards.length
   const progress = Math.round((currentIndex / total) * 100)
   const question = current?.front || current?.question || ''
+
+  // CG-2: potential bonus XP for recalling this card correctly (shown after reveal)
+  const currentBonus = (() => {
+    if (!current || current.state !== 'review' || !current.stability || !current.lastReview) return 0
+    const elapsed = Math.max(0, (Date.now() - new Date(current.lastReview).getTime()) / 86400000)
+    const r = retrievability(current.stability, elapsed)
+    return Math.round(Math.max(0, 1 - r) * 20)
+  })()
 
   useEffect(() => {
     setRevealed(false)
@@ -163,15 +172,25 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
 
   function selectRating(value) {
     if (pendingRating !== null) return
-    setUndoState({ currentIndex, updatedCards: [...updatedCards], results: { ...results } })
+    setUndoState({ currentIndex, updatedCards: [...updatedCards], results: { ...results }, xpBonus })
     setPendingRating(value)
     setTimeout(() => handleRate(value), 480)
   }
 
   const handleRate = useCallback((rating) => {
+    // CG-2: compute pre-schedule retrievability bonus for review cards recalled correctly
+    let cardBonus = 0
+    if (rating >= 3 && current.state === 'review' && current.stability > 0 && current.lastReview) {
+      const elapsed = Math.max(0, (Date.now() - new Date(current.lastReview).getTime()) / 86400000)
+      const r = retrievability(current.stability, elapsed)
+      cardBonus = Math.round(Math.max(0, 1 - r) * 20)
+    }
+    const newXpBonus = xpBonus + cardBonus
+
     const scheduled = scheduleCard(current, rating, new Date())
     const newUpdatedCards = [...updatedCards, scheduled]
     setUpdatedCards(newUpdatedCards)
+    setXpBonus(newXpBonus)
 
     const isCorrect = rating >= 3
     const newResults = {
@@ -188,20 +207,22 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
         wrong: newResults.wrong,
         total,
         timeSeconds: Math.round((Date.now() - startTime) / 1000),
-        xpEarned: newResults.correct * 10 + total * 2,
+        xpEarned: newResults.correct * 10 + total * 2 + newXpBonus,
+        xpBonus: newXpBonus,
         startTime: new Date(startTime).toISOString(),
       })
     } else {
       setCurrentIndex(nextIndex)
       setCanUndo(true)
     }
-  }, [current, currentIndex, queue, updatedCards, results, total, startTime, onComplete])
+  }, [current, currentIndex, queue, updatedCards, results, xpBonus, total, startTime, onComplete])
 
   function handleUndo() {
     if (!canUndo || !undoState) return
     setCurrentIndex(undoState.currentIndex)
     setUpdatedCards(undoState.updatedCards)
     setResults(undoState.results)
+    setXpBonus(undoState.xpBonus ?? 0)
     setCanUndo(false)
     setUndoState(null)
     setPendingRating(null)
@@ -492,6 +513,17 @@ const mcqExplanation = current.back || current.explanation || ''
           {/* Rating buttons — flashcard & short_answer */}
           {revealed && current.type !== 'mcq' && (
             <div className="animate-pop" style={{ marginTop: 8 }}>
+              {/* CG-2: bonus XP indicator for review cards at risk */}
+              {currentBonus > 0 && (
+                <div style={{
+                  textAlign: 'center', fontSize: 12, fontWeight: 700,
+                  color: 'var(--accent)', marginBottom: 8,
+                  background: 'var(--accent-dim)', border: '1px solid rgba(251,191,36,0.3)',
+                  borderRadius: 10, padding: '5px 10px',
+                }}>
+                  🔥 +{currentBonus} XP bonus si la recordás
+                </div>
+              )}
               {/* UX-07: First-session coachmark */}
               {showCoachmark && currentIndex === 0 && (
                 <div
@@ -611,6 +643,16 @@ const mcqExplanation = current.back || current.explanation || ''
           {/* Rating — MCQ correcto: solo Bien / Fácil */}
           {current.type === 'mcq' && mcqResult === 'correct' && (
             <div className="animate-pop" style={{ marginTop: 8 }}>
+              {currentBonus > 0 && (
+                <div style={{
+                  textAlign: 'center', fontSize: 12, fontWeight: 700,
+                  color: 'var(--accent)', marginBottom: 8,
+                  background: 'var(--accent-dim)', border: '1px solid rgba(251,191,36,0.3)',
+                  borderRadius: 10, padding: '5px 10px',
+                }}>
+                  🔥 +{currentBonus} XP bonus por esta recuperación
+                </div>
+              )}
               <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>
                 ¿Te costó pensarlo?
               </p>

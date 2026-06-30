@@ -13,6 +13,7 @@ import CancelSubscriptionModal from './components/CancelSubscriptionModal'
 import * as storage from './services/storage'
 import { getDueCards } from './services/fsrs'
 import { getLevel } from './services/levels'
+import { getNewUnlocks } from './services/unlocks'
 import { supabase, isSupabaseEnabled } from './services/supabase'
 import { fetchProfile, fetchDecks, fetchSubscription, upsertProfile, upsertCards, migrateLocalToCloud, insertSession, deleteDeck as deleteDeckFromCloud } from './services/cloud'
 import { DEMO_DECK, DEMO_CARDS } from './data/demoCards'
@@ -405,10 +406,17 @@ export default function App() {
     const { shieldUsed, ...updatedUser } = streakResult
     const userWithXP = storage.addXP(updatedUser, results.xpEarned)
     const levelAfter = getLevel(userWithXP.xp)
-    setUser(userWithXP)
 
+    // CG-3: detect new unlocks from level-up and persist them
     const levelUp = levelAfter.level > levelBefore.level ? levelAfter : null
-    setSessionResults({ ...results, xpEarned: results.xpEarned, levelUp, shieldUsed })
+    const newUnlocks = levelUp ? getNewUnlocks(levelBefore.level, levelAfter.level) : []
+    const userFinal = newUnlocks.length > 0
+      ? { ...userWithXP, unlockedIds: [...(userWithXP.unlockedIds ?? []), ...newUnlocks.map(u => u.id)] }
+      : userWithXP
+    if (newUnlocks.length > 0) storage.saveUser(userFinal)
+    setUser(userFinal)
+
+    setSessionResults({ ...results, xpEarned: results.xpEarned, levelUp, shieldUsed, newUnlocks })
     setScreen('complete')
 
     // Sync updated cards + profile + session log to cloud in background

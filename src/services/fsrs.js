@@ -4,7 +4,8 @@
 const INIT_STABILITY = { 1: 0.4, 2: 1.2, 3: 3.5, 4: 9.0 }
 const INIT_DIFFICULTY = { 1: 8.0, 2: 6.5, 3: 5.0, 4: 3.0 }
 
-function retrievability(stability, elapsedDays) {
+export function retrievability(stability, elapsedDays) {
+  if (!stability || stability <= 0) return 0
   return Math.pow(0.9, elapsedDays / stability)
 }
 
@@ -90,6 +91,22 @@ export function getNextReviewText(card) {
   if (hours < 24) return `en ${hours}h`
   const days = Math.round(diff / 86400000)
   return `en ${days} día${days !== 1 ? 's' : ''}`
+}
+
+// CG-5: Deck mastery = average predicted retrievability across all cards.
+// new/learning/relearning cards contribute 0 (not yet mastered).
+// Returns 0–100 (integer %) or null if deck has no cards.
+export function getDeckMastery(cards, now = new Date()) {
+  if (!cards || cards.length === 0) return null
+  const total = cards.length
+  let rSum = 0
+  for (const card of cards) {
+    if (card.state === 'review' && card.stability > 0 && card.lastReview) {
+      const elapsed = Math.max(0, (now - new Date(card.lastReview)) / 86400000)
+      rSum += retrievability(card.stability, elapsed)
+    }
+  }
+  return Math.round((rSum / total) * 100)
 }
 
 export function createCard(rawCard, deckId) {
