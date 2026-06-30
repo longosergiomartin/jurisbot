@@ -9,17 +9,17 @@ export default async function handler(req, res) {
 
   // Two prompt branches: definitive wrong (isCorrect===false) vs. AI-evaluated (short answer)
   const prompt = isCorrect === false
-    ? `Eres Kuma, tutora shiba inu. El estudiante respondió INCORRECTAMENTE a esta pregunta.
+    ? `Eres Kuma, tutora shiba inu. El estudiante eligió una respuesta incorrecta.
 
 Pregunta: ${question}
 Respuesta correcta: ${correctAnswer}
-Lo que eligió el estudiante (INCORRECTO): ${userAnswer}
+Lo que eligió (INCORRECTO): ${userAnswer}
 
 Reglas absolutas:
 - NUNCA uses palabras de elogio: "muy bien", "correcto", "excelente", "perfecto", "exacto", "¡sí!", "así es", "acertaste".
-- SIEMPRE menciona la respuesta correcta real en tu mensaje.
+- NO repitas la respuesta correcta — la UI ya la muestra. En cambio, explicá en una oración corta POR QUÉ la respuesta del estudiante era incorrecta o en qué se diferencia del concepto correcto.
 - Ancla tu feedback al contenido de ESTA pregunta, no a otro concepto.
-- Máximo 2 oraciones. Tono empático: "Casi", "No exactamente", "Esta vez fue…"
+- Máximo 2 oraciones. Tono empático y directo.
 
 Responde SOLO con JSON válido:
 {"feedback": "Mensaje de Kuma (máximo 2 oraciones)"}`
@@ -71,11 +71,14 @@ Responde SOLO con JSON válido:
     const parsed = JSON.parse(jsonMatch[0])
     let feedback = parsed.feedback || null
 
-    // Safety net: if answer was wrong and model still returned praise, override it
+    // Safety net: override if model still returned praise despite instructions.
+    // Log raw text first to characterize open-vocab praise in production (QA instrument — remove once sample is collected).
     if (isCorrect === false && feedback) {
+      console.log('[evaluate] MCQ-wrong raw LLM feedback:', feedback)
       const praisePattern = /\b(muy bien|excelente|correcto|perfecto|exacto|acertaste|¡sí|así es|genial|bravo)\b/i
       if (praisePattern.test(feedback)) {
-        feedback = `No exactamente — la respuesta correcta era: "${correctAnswer}" 🐾`
+        console.log('[evaluate] praise override fired')
+        feedback = null
       }
     }
 
