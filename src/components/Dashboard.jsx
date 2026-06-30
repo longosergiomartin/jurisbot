@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useState, useRef } from 'react'
 import { getDueCards } from '../services/fsrs'
 import { getLevel } from '../services/levels'
+import { getISOWeek } from '../services/storage'
 import WeeklyCalendar from './WeeklyCalendar'
 import { requestNotificationPermission, showReminderIfDue } from '../services/notifications'
 import SyncStatus from './SyncStatus'
@@ -41,6 +42,17 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
     () => ('Notification' in window ? Notification.permission : 'denied')
   )
 
+  // CG-1: streak banner frequency cap — max 2 impressions per ISO week
+  const STREAK_WARN_MAX = 2
+  const [streakBannerAllowed, setStreakBannerAllowed] = useState(() => {
+    const today = new Date().toISOString().slice(0, 10)
+    const thisWeek = getISOWeek(today)
+    try {
+      const stored = JSON.parse(localStorage.getItem('cognify_streak_warn') || '{}')
+      return stored.week !== thisWeek || (stored.count ?? 0) < STREAK_WARN_MAX
+    } catch { return true }
+  })
+
   // UX-14: shield tooltip on first appearance
   const [shieldTooltipSeen, setShieldTooltipSeen] = useState(
     () => !!localStorage.getItem('cognify_shield_seen')
@@ -58,6 +70,18 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
     // Show shield tooltip once when user first has shields
     if ((user.streakShields ?? 0) > 0 && !shieldTooltipSeen) {
       setShowShieldTooltip(true)
+    }
+    // CG-1: record banner impression if it will be shown
+    if (user.streak > 0 && totalDue > 0 && streakBannerAllowed) {
+      const today = new Date().toISOString().slice(0, 10)
+      const thisWeek = getISOWeek(today)
+      try {
+        const stored = JSON.parse(localStorage.getItem('cognify_streak_warn') || '{}')
+        const count = stored.week === thisWeek ? (stored.count ?? 0) : 0
+        if (count < STREAK_WARN_MAX) {
+          localStorage.setItem('cognify_streak_warn', JSON.stringify({ week: thisWeek, count: count + 1 }))
+        }
+      } catch { /* ignore */ }
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -81,10 +105,10 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
   // Find the deck with most due cards to study
   const bestDeckToStudy = [...deckStats].sort((a, b) => b.dueCount - a.dueCount)[0]
 
-  // Streak-at-risk banner logic
+  // Streak-at-risk banner logic (CG-1: also gated by weekly impression cap)
   const today = new Date().toISOString().slice(0, 10)
   const studiedToday = user.lastStudyDate === today
-  const showStreakBanner = user.streak > 0 && !studiedToday && totalDue > 0
+  const showStreakBanner = user.streak > 0 && !studiedToday && totalDue > 0 && streakBannerAllowed
 
   const sessionEstimate = getSessionEstimate(totalDue)
 
@@ -92,12 +116,12 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
     <div className="screen" style={{ paddingTop: 20 }}>
       <div className="container animate-fade">
 
-        {/* Streak-at-risk banner */}
+        {/* CG-1: Streak-at-risk banner — Kuma voice, no pulse/glow, frequency-capped */}
         {showStreakBanner && (
           <div
             style={{
-              background: 'linear-gradient(135deg, rgba(251,146,60,0.22) 0%, rgba(239,68,68,0.22) 100%)',
-              border: '1px solid rgba(251,146,60,0.45)',
+              background: 'linear-gradient(135deg, rgba(251,146,60,0.14) 0%, rgba(139,92,246,0.12) 100%)',
+              border: '1px solid rgba(251,146,60,0.35)',
               borderRadius: 16,
               padding: '14px 16px',
               marginBottom: 16,
@@ -105,28 +129,24 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
               alignItems: 'center',
               justifyContent: 'space-between',
               gap: 12,
-              animation: 'streak-pulse 2.4s ease-in-out infinite',
             }}
           >
-            <style>{`
-              @keyframes streak-pulse {
-                0%, 100% { box-shadow: 0 0 0 0 rgba(251,146,60,0); }
-                50% { box-shadow: 0 0 16px 4px rgba(251,146,60,0.25); }
-              }
-            `}</style>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 14, color: '#fb923c', marginBottom: 2 }}>
-                ⚡ ¡Tu racha de {user.streak} {user.streak === 1 ? 'día' : 'días'} vence hoy!
-              </div>
-              <div style={{ fontSize: 12, color: 'rgba(251,146,60,0.8)' }}>
-                No pierdas el progreso que ya construiste
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <span style={{ fontSize: 28, lineHeight: 1 }}>🐾</span>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 14, color: '#fb923c', marginBottom: 2 }}>
+                  Kuma extrañó estudiar con vos
+                </div>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                  Tu racha de {user.streak} {user.streak === 1 ? 'día' : 'días'} todavía sigue en pie. ¿La seguimos?
+                </div>
               </div>
             </div>
             <button
               className="btn"
               onClick={() => bestDeckToStudy && onStudy(bestDeckToStudy.id)}
               style={{
-                background: 'linear-gradient(135deg, #fb923c 0%, #ef4444 100%)',
+                background: 'linear-gradient(135deg, #fb923c 0%, #f59e0b 100%)',
                 color: '#fff',
                 fontSize: 12,
                 padding: '8px 14px',
@@ -134,13 +154,9 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
                 fontWeight: 700,
                 whiteSpace: 'nowrap',
                 flexShrink: 0,
-                flexDirection: 'column',
-                gap: 0,
-                lineHeight: 1.4,
               }}
             >
-              <span>Estudiar ahora</span>
-              <span style={{ fontWeight: 400, opacity: 0.85, fontSize: 11 }}>toma solo 5 min</span>
+              Estudiar · {sessionEstimate}
             </button>
           </div>
         )}

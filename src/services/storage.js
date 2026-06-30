@@ -31,6 +31,7 @@ export function createUser(name) {
     xp: 0,
     streakShields: 1,
     lastShieldWeek: null,
+    unlockedIds: [],
     createdAt: new Date().toISOString(),
   }
   save(KEYS.USER, user)
@@ -124,17 +125,17 @@ export function deleteDeck(deckId) {
   return updated
 }
 
-function getPreviousDay(dateStr) {
-  const d = new Date(dateStr)
-  d.setDate(d.getDate() - 1)
-  return d.toISOString().slice(0, 10)
-}
-
-function getISOWeek(dateStr) {
+export function getISOWeek(dateStr) {
   const d = new Date(dateStr)
   d.setHours(0, 0, 0, 0)
   d.setDate(d.getDate() + 3 - (d.getDay() + 6) % 7)
   const week1 = new Date(d.getFullYear(), 0, 4)
   const weekNum = 1 + Math.round(((d.getTime() - week1.getTime()) / 86400000 - 3 + (week1.getDay() + 6) % 7) / 7)
   return `${d.getFullYear()}-W${String(weekNum).padStart(2, '0')}`
+}
+
+function getPreviousDay(dateStr) {
+  const d = new Date(dateStr)
+  d.setDate(d.getDate() - 1)
+  return d.toISOString().slice(0, 10)
 }

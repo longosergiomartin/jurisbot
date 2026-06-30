@@ -7,7 +7,20 @@ const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
 const CHUNK_SIZE = 2800
 const MAX_TEXT_CHARS = 50000
 
-function buildInstructions(count) {
+const SIMPLIFIED_INSTRUCTION = `
+
+MODO SIMPLIFICADO (OBLIGATORIO):
+Genera preguntas con vocabulario sencillo, frases cortas y opciones claras, evitando tecnicismos innecesarios para facilitar la comprensión general.
+
+Debes transformar el contenido siguiendo este formato exacto de ejemplo:
+
+Texto original: "El demandante interpone recurso de apelación contra la sentencia de primera instancia."
+
+Pregunta simplificada: "¿Qué hace el demandante si no está de acuerdo con el fallo del juez?"
+
+Opciones simplificadas: a) Recurrir la decisión, b) Aceptar el fallo, c) Demandar a otro juez.`
+
+function buildInstructions(count, difficulty) {
   return `Eres un experto en pedagogía y aprendizaje activo. Analiza el siguiente material educativo y genera exactamente ${count} tarjetas de estudio de alta calidad.
 
 TIPOS DE TARJETAS:
@@ -46,7 +59,7 @@ FORMATO DE RESPUESTA — solo JSON, sin markdown, sin texto adicional:
   }
 ]
 
-Genera las ${count} tarjetas ahora. Responde SOLO con el array JSON, sin texto antes ni después.`
+Genera las ${count} tarjetas ahora. Responde SOLO con el array JSON, sin texto antes ni después.${difficulty === 'simplified' ? SIMPLIFIED_INSTRUCTION : ''}`
 }
 
 function chunkText(text) {
@@ -108,7 +121,8 @@ async function callClaude(messageContent) {
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
 
-  const { text, fileData, url, cardCount = 15 } = req.body
+  const { text, fileData, url, cardCount = 15, difficulty } = req.body
+  const safeDifficulty = difficulty === 'simplified' ? 'simplified' : 'detailed'
 
   if (!text && !fileData && !url) {
     return res.status(400).json({ error: 'Se requiere texto, archivo o URL' })
@@ -213,7 +227,7 @@ export default async function handler(req, res) {
     if (fileData?.mimeType === 'application/pdf') {
       const content = [
         { type: 'document', source: { type: 'base64', media_type: 'application/pdf', data: fileData.base64 } },
-        { type: 'text', text: buildInstructions(count) },
+        { type: 'text', text: buildInstructions(count, safeDifficulty) },
       ]
       allCards = await callClaude(content)
       send({ type: 'progress', chunk: 1, total: 1, cards: allCards.length })
@@ -221,7 +235,7 @@ export default async function handler(req, res) {
     } else if (fileData?.mimeType && IMAGE_MIME_TYPES.includes(fileData.mimeType)) {
       const content = [
         { type: 'image', source: { type: 'base64', media_type: fileData.mimeType, data: fileData.base64 } },
-        { type: 'text', text: buildInstructions(count) },
+        { type: 'text', text: buildInstructions(count, safeDifficulty) },
       ]
       allCards = await callClaude(content)
       send({ type: 'progress', chunk: 1, total: 1, cards: allCards.length })
@@ -235,7 +249,7 @@ export default async function handler(req, res) {
       const perChunk = Math.ceil(count / chunks.length)
 
       for (let i = 0; i < chunks.length; i++) {
-        const content = [{ type: 'text', text: `${buildInstructions(perChunk)}\n\nMATERIAL:\n${chunks[i]}` }]
+        const content = [{ type: 'text', text: `${buildInstructions(perChunk, safeDifficulty)}\n\nMATERIAL:\n${chunks[i]}` }]
         const chunkCards = await callClaude(content)
         allCards.push(...chunkCards)
         send({ type: 'progress', chunk: i + 1, total: chunks.length, cards: allCards.length })

@@ -1,6 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
-import { scheduleCard } from '../services/fsrs'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { scheduleCard, retrievability } from '../services/fsrs'
 import SocraticSession from './SocraticSession'
+
+const SpeechRecognitionAPI = typeof window !== 'undefined'
+  ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+  : null
 
 
 const RATING_CONFIG = [
@@ -30,6 +34,7 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
   const [pendingRating, setPendingRating] = useState(null)
   const [updatedCards, setUpdatedCards] = useState([])
   const [results, setResults] = useState({ correct: 0, wrong: 0 })
+  const [xpBonus, setXpBonus] = useState(0)
   const [startTime] = useState(Date.now())
   const [showExitConfirm, setShowExitConfirm] = useState(false)
   const [undoState, setUndoState] = useState(null)
@@ -37,11 +42,23 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
   const [showCoachmark, setShowCoachmark] = useState(
     () => !localStorage.getItem('cognify_rating_coach_seen')
   )
+  const [isListening, setIsListening] = useState(false)
+  const [voiceToast, setVoiceToast] = useState(null)
+  const recognitionRef = useRef(null)
+  const answerInputRef = useRef(null)
 
   const current = queue[currentIndex]
   const total = cards.length
   const progress = Math.round((currentIndex / total) * 100)
   const question = current?.front || current?.question || ''
+
+  // CG-2: potential bonus XP for recalling this card correctly (shown after reveal)
+  const currentBonus = (() => {
+    if (!current || current.state !== 'review' || !current.stability || !current.lastReview) return 0
+    const elapsed = Math.max(0, (Date.now() - new Date(current.lastReview).getTime()) / 86400000)
+    const r = retrievability(current.stability, elapsed)
+    return Math.round(Math.max(0, 1 - r) * 20)
+  })()
 
   useEffect(() => {
     setRevealed(false)
@@ -52,7 +69,62 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
     setShortAnswerSubmitted(false)
     setShowSocratic(false)
     setPendingRating(null)
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+      recognitionRef.current = null
+    }
+    setIsListening(false)
   }, [currentIndex])
+
+  useEffect(() => {
+    if (!voiceToast) return
+    const t = setTimeout(() => setVoiceToast(null), 3500)
+    return () => clearTimeout(t)
+  }, [voiceToast])
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) recognitionRef.current.stop()
+    }
+  }, [])
+
+  function handleMicClick() {
+    if (!SpeechRecognitionAPI) {
+      setVoiceToast({ type: 'warning', message: 'Tu navegador no soporta dictado por voz. Usá el teclado.' })
+      return
+    }
+    if (isListening) {
+      recognitionRef.current?.stop()
+      return
+    }
+
+    const recognition = new SpeechRecognitionAPI()
+    recognition.lang = 'es-ES'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+
+    recognition.onstart = () => setIsListening(true)
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript
+      setUserAnswer(prev => (prev ? `${prev} ${transcript}` : transcript))
+      answerInputRef.current?.blur()
+    }
+
+    recognition.onerror = (event) => {
+      if (event.error === 'not-allowed') {
+        setVoiceToast({ type: 'warning', message: 'Permiso de micrófono denegado. Usa el teclado.' })
+      } else if (event.error === 'no-speech') {
+        setVoiceToast({ type: 'info', message: 'No te escuchamos. Toca el botón y habla de nuevo.' })
+      }
+      setIsListening(false)
+    }
+
+    recognition.onend = () => setIsListening(false)
+
+    recognitionRef.current = recognition
+    recognition.start()
+  }
 
   async function fetchFeedback(q, correctAns, userAns, isCorrect) {
     setLoadingFeedback(true)
@@ -100,15 +172,25 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
 
   function selectRating(value) {
     if (pendingRating !== null) return
-    setUndoState({ currentIndex, updatedCards: [...updatedCards], results: { ...results } })
+    setUndoState({ currentIndex, updatedCards: [...updatedCards], results: { ...results }, xpBonus })
     setPendingRating(value)
     setTimeout(() => handleRate(value), 480)
   }
 
   const handleRate = useCallback((rating) => {
+    // CG-2: compute pre-schedule retrievability bonus for review cards recalled correctly
+    let cardBonus = 0
+    if (rating >= 3 && current.state === 'review' && current.stability > 0 && current.lastReview) {
+      const elapsed = Math.max(0, (Date.now() - new Date(current.lastReview).getTime()) / 86400000)
+      const r = retrievability(current.stability, elapsed)
+      cardBonus = Math.round(Math.max(0, 1 - r) * 20)
+    }
+    const newXpBonus = xpBonus + cardBonus
+
     const scheduled = scheduleCard(current, rating, new Date())
     const newUpdatedCards = [...updatedCards, scheduled]
     setUpdatedCards(newUpdatedCards)
+    setXpBonus(newXpBonus)
 
     const isCorrect = rating >= 3
     const newResults = {
@@ -125,20 +207,22 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
         wrong: newResults.wrong,
         total,
         timeSeconds: Math.round((Date.now() - startTime) / 1000),
-        xpEarned: newResults.correct * 10 + total * 2,
+        xpEarned: newResults.correct * 10 + total * 2 + newXpBonus,
+        xpBonus: newXpBonus,
         startTime: new Date(startTime).toISOString(),
       })
     } else {
       setCurrentIndex(nextIndex)
       setCanUndo(true)
     }
-  }, [current, currentIndex, queue, updatedCards, results, total, startTime, onComplete])
+  }, [current, currentIndex, queue, updatedCards, results, xpBonus, total, startTime, onComplete])
 
   function handleUndo() {
     if (!canUndo || !undoState) return
     setCurrentIndex(undoState.currentIndex)
     setUpdatedCards(undoState.updatedCards)
     setResults(undoState.results)
+    setXpBonus(undoState.xpBonus ?? 0)
     setCanUndo(false)
     setUndoState(null)
     setPendingRating(null)
@@ -155,6 +239,21 @@ const mcqExplanation = current.back || current.explanation || ''
 
   return (
     <>
+      {voiceToast && (
+        <div style={{
+          position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 1000,
+          background: voiceToast.type === 'warning' ? 'var(--danger)' : 'var(--primary)',
+          color: '#fff', padding: '12px 20px', borderRadius: 14, fontWeight: 600,
+          fontSize: 13, boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+          animation: 'popIn 0.3s ease',
+          maxWidth: '85vw', textAlign: 'center',
+          pointerEvents: 'none',
+        }}>
+          {voiceToast.type === 'warning' ? '⚠️ ' : 'ℹ️ '}{voiceToast.message}
+        </div>
+      )}
+
       {showSocratic && (
         <SocraticSession
           concept={question}
@@ -304,14 +403,33 @@ const mcqExplanation = current.back || current.explanation || ''
 
             {/* Short answer: input */}
             {current.type === 'short_answer' && !shortAnswerSubmitted && (
-              <div style={{ marginTop: 20 }}>
+              <div style={{ marginTop: 20, position: 'relative' }}>
                 <textarea
+                  ref={answerInputRef}
                   value={userAnswer}
                   onChange={e => setUserAnswer(e.target.value)}
                   placeholder="Escribí tu respuesta con tus propias palabras..."
                   rows={4}
                   className="short-answer-input"
+                  style={{ paddingRight: 48 }}
                 />
+                <button
+                  onClick={handleMicClick}
+                  title={isListening ? 'Detener dictado' : 'Dictar por voz'}
+                  style={{
+                    position: 'absolute', right: 8, bottom: 8,
+                    width: 36, height: 36, borderRadius: '50%',
+                    border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 16, transition: 'all 0.2s',
+                    background: isListening ? 'var(--danger)' : 'var(--primary-dim)',
+                    color: isListening ? '#fff' : 'var(--primary-light)',
+                    boxShadow: isListening ? '0 0 0 4px rgba(239,68,68,0.25)' : 'none',
+                    animation: isListening ? 'pulse 1.2s infinite' : 'none',
+                  }}
+                >
+                  🎤
+                </button>
               </div>
             )}
 
@@ -395,6 +513,17 @@ const mcqExplanation = current.back || current.explanation || ''
           {/* Rating buttons — flashcard & short_answer */}
           {revealed && current.type !== 'mcq' && (
             <div className="animate-pop" style={{ marginTop: 8 }}>
+              {/* CG-2: bonus XP indicator for review cards at risk */}
+              {currentBonus > 0 && (
+                <div style={{
+                  textAlign: 'center', fontSize: 12, fontWeight: 700,
+                  color: 'var(--accent)', marginBottom: 8,
+                  background: 'var(--accent-dim)', border: '1px solid rgba(251,191,36,0.3)',
+                  borderRadius: 10, padding: '5px 10px',
+                }}>
+                  🔥 +{currentBonus} XP bonus si la recordás
+                </div>
+              )}
               {/* UX-07: First-session coachmark */}
               {showCoachmark && currentIndex === 0 && (
                 <div
@@ -514,6 +643,16 @@ const mcqExplanation = current.back || current.explanation || ''
           {/* Rating — MCQ correcto: solo Bien / Fácil */}
           {current.type === 'mcq' && mcqResult === 'correct' && (
             <div className="animate-pop" style={{ marginTop: 8 }}>
+              {currentBonus > 0 && (
+                <div style={{
+                  textAlign: 'center', fontSize: 12, fontWeight: 700,
+                  color: 'var(--accent)', marginBottom: 8,
+                  background: 'var(--accent-dim)', border: '1px solid rgba(251,191,36,0.3)',
+                  borderRadius: 10, padding: '5px 10px',
+                }}>
+                  🔥 +{currentBonus} XP bonus por esta recuperación
+                </div>
+              )}
               <p style={{ fontSize: 12, color: 'var(--text-muted)', textAlign: 'center', marginBottom: 10 }}>
                 ¿Te costó pensarlo?
               </p>

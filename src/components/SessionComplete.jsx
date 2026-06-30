@@ -13,7 +13,7 @@ const CONFETTI_PIECES = [
 const STREAK_MILESTONES = [7, 14, 30, 60, 100, 365]
 
 export default function SessionComplete({ results, user, authUser, onDone, onShowAuth }) {
-  const { correct, wrong, total, timeSeconds, xpEarned, levelUp, shieldUsed } = results
+  const { correct, wrong, total, timeSeconds, xpEarned, xpBonus, levelUp, shieldUsed, newUnlocks } = results
 
   const accuracy = total > 0 ? Math.round((correct / total) * 100) : 0
   const mins = Math.floor(timeSeconds / 60)
@@ -71,13 +71,41 @@ export default function SessionComplete({ results, user, authUser, onDone, onSho
               border: '1.5px solid rgba(251,191,36,0.5)',
               borderRadius: 16,
               padding: '12px 20px',
-              marginBottom: 16,
+              marginBottom: newUnlocks?.length > 0 ? 8 : 16,
               fontSize: 15,
               fontWeight: 700,
               color: 'var(--accent)',
             }}
           >
             ⬆️ ¡Nivel {levelUp.level} desbloqueado! — {levelUp.name}
+          </div>
+        )}
+
+        {/* CG-3: newly unlocked items on level-up */}
+        {newUnlocks?.length > 0 && (
+          <div
+            className="animate-pop"
+            style={{
+              background: 'linear-gradient(135deg, rgba(139,92,246,0.12) 0%, rgba(251,191,36,0.1) 100%)',
+              border: '1px solid rgba(139,92,246,0.35)',
+              borderRadius: 14,
+              padding: '12px 16px',
+              marginBottom: 16,
+              textAlign: 'left',
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--primary-light)', marginBottom: 8 }}>
+              🎁 Lo que desbloqueaste
+            </div>
+            {newUnlocks.map(u => (
+              <div key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                <span style={{ fontSize: 20 }}>{u.emoji}</span>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--text)' }}>{u.name}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>{u.description}</div>
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -121,6 +149,17 @@ export default function SessionComplete({ results, user, authUser, onDone, onSho
             </div>
           ))}
         </div>
+
+        {/* CG-2: bonus XP breakdown */}
+        {xpBonus > 0 && (
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+            fontSize: 12, color: 'var(--accent)', fontWeight: 600,
+            marginTop: -12, marginBottom: 16,
+          }}>
+            🔥 Incluye +{xpBonus} XP por tarjetas recuperadas
+          </div>
+        )}
 
         {/* XP level progress bar */}
         <div
