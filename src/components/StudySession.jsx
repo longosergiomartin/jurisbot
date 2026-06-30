@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { scheduleCard, retrievability } from '../services/fsrs'
+import { scheduleCard, retrievability, isClawbackEligible } from '../services/fsrs'
 import SocraticSession from './SocraticSession'
 
 const SpeechRecognitionAPI = typeof window !== 'undefined'
@@ -54,7 +54,7 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
 
   // CG-2: potential bonus XP for recalling this card correctly (shown after reveal)
   const currentBonus = (() => {
-    if (!current || current.state !== 'review' || !current.stability || !current.lastReview) return 0
+    if (!current || !isClawbackEligible(current)) return 0
     const elapsed = Math.max(0, (Date.now() - new Date(current.lastReview).getTime()) / 86400000)
     const r = retrievability(current.stability, elapsed)
     return Math.round(Math.max(0, 1 - r) * 20)
@@ -178,9 +178,9 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
   }
 
   const handleRate = useCallback((rating) => {
-    // CG-2: compute pre-schedule retrievability bonus for review cards recalled correctly
+    // CG-2: compute pre-schedule retrievability bonus for at-risk cards recalled correctly
     let cardBonus = 0
-    if (rating >= 3 && current.state === 'review' && current.stability > 0 && current.lastReview) {
+    if (rating >= 3 && isClawbackEligible(current)) {
       const elapsed = Math.max(0, (Date.now() - new Date(current.lastReview).getTime()) / 86400000)
       const r = retrievability(current.stability, elapsed)
       cardBonus = Math.round(Math.max(0, 1 - r) * 20)
@@ -468,7 +468,8 @@ const mcqExplanation = current.back || current.explanation || ''
                 ) : current.type === 'mcq' && mcqResult === 'correct' ? (
                   '¡Exacto! Esa es la respuesta correcta. 🎯'
                 ) : current.type === 'mcq' && mcqResult === 'wrong' ? (
-                  aiFeedback || `La respuesta correcta era: "${current.options[current.correctIndex]}". ${mcqExplanation}`
+                  // Deterministic correction always leads — the LLM's empathetic text (if any) only follows, never replaces it
+                  `No exactamente — la respuesta correcta era: "${current.options[current.correctIndex]}". ${aiFeedback || mcqExplanation}`
                 ) : (
                   aiFeedback || '¿Cómo te fue? Calificá qué tan bien lo sabías.'
                 )}
