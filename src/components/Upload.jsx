@@ -27,6 +27,13 @@ const INPUT_TABS = [
   { id: 'url',  label: '🔗 URL' },
 ]
 
+const DIFFICULTY_PREF_KEY = 'cognify_difficulty_pref'
+
+const DIFFICULTY_OPTIONS = [
+  { id: 'detailed', label: 'Detallado', sublabel: 'Técnico/Legal' },
+  { id: 'simplified', label: 'Simplificado', sublabel: 'General' },
+]
+
 export default function Upload({ onReady, onBack }) {
   const [inputMode, setInputMode] = useState('text')
   const [text, setText] = useState('')
@@ -42,6 +49,9 @@ export default function Upload({ onReady, onBack }) {
   const [hasGoal, setHasGoal] = useState(false)
   const [targetDate, setTargetDate] = useState('')
   const [chapterInfo, setChapterInfo] = useState({ enabled: false, current: '', total: '' })
+  const [difficulty, setDifficulty] = useState(
+    () => localStorage.getItem(DIFFICULTY_PREF_KEY) || 'detailed'
+  )
   const fileRef = useRef()
 
   // Auto-derive title unless the user has manually set it
@@ -49,6 +59,11 @@ export default function Upload({ onReady, onBack }) {
     if (titleTouched) return
     setTitle(deriveTitle(text, fileName, urlValue))
   }, [text, fileName, urlValue, titleTouched])
+
+  function selectDifficulty(id) {
+    setDifficulty(id)
+    localStorage.setItem(DIFFICULTY_PREF_KEY, id)
+  }
 
   function getFileMeta(file) {
     const n = file.name.toLowerCase()
@@ -93,6 +108,7 @@ export default function Upload({ onReady, onBack }) {
       url: activeUrl || null,
       title: finalTitle,
       cardCount,
+      difficulty,
       goal: hasGoal && targetDate ? { targetDate, setAt: new Date().toISOString() } : null,
       chapter: chapterInfo.enabled && chapterInfo.current && chapterInfo.total
         ? { current: Number(chapterInfo.current), total: Number(chapterInfo.total) }
@@ -419,6 +435,33 @@ export default function Upload({ onReady, onBack }) {
 
           </div>
         )}
+
+        {/* Difficulty selector */}
+        <div style={{ marginBottom: 16 }}>
+          <label style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-soft)', display: 'block', marginBottom: 8 }}>
+            Nivel de dificultad
+          </label>
+          <div style={{
+            display: 'flex', gap: 3,
+            background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 3,
+          }}>
+            {DIFFICULTY_OPTIONS.map(opt => (
+              <button
+                key={opt.id}
+                onClick={() => selectDifficulty(opt.id)}
+                style={{
+                  flex: 1, borderRadius: 9, border: 'none', padding: '8px 0',
+                  fontFamily: 'inherit', cursor: 'pointer', transition: 'all 0.18s',
+                  background: difficulty === opt.id ? 'var(--primary)' : 'transparent',
+                  color: difficulty === opt.id ? '#fff' : 'var(--text-muted)',
+                }}
+              >
+                <div style={{ fontSize: 13, fontWeight: 600 }}>{opt.label}</div>
+                <div style={{ fontSize: 10, opacity: 0.8 }}>{opt.sublabel}</div>
+              </button>
+            ))}
+          </div>
+        </div>
 
         <button
           className="btn btn-primary"

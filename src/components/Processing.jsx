@@ -56,6 +56,7 @@ export default function Processing({ source, onComplete, onError, onPaywall }) {
           fileData: source.fileData,
           url: source.url,
           cardCount: source.cardCount,
+          difficulty: source.difficulty,
         }),
       })
     } catch {

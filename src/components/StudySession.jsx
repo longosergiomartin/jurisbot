@@ -1,6 +1,10 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { scheduleCard } from '../services/fsrs'
 import SocraticSession from './SocraticSession'
+
+const SpeechRecognitionAPI = typeof window !== 'undefined'
+  ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+  : null
 
 
 const RATING_CONFIG = [
@@ -37,6 +41,10 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
   const [showCoachmark, setShowCoachmark] = useState(
     () => !localStorage.getItem('cognify_rating_coach_seen')
   )
+  const [isListening, setIsListening] = useState(false)
+  const [voiceToast, setVoiceToast] = useState(null)
+  const recognitionRef = useRef(null)
+  const answerInputRef = useRef(null)
 
   const current = queue[currentIndex]
   const total = cards.length
@@ -52,7 +60,62 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
     setShortAnswerSubmitted(false)
     setShowSocratic(false)
     setPendingRating(null)
+    if (recognitionRef.current) {
+      recognitionRef.current.stop()
+      recognitionRef.current = null
+    }
+    setIsListening(false)
   }, [currentIndex])
+
+  useEffect(() => {
+    if (!voiceToast) return
+    const t = setTimeout(() => setVoiceToast(null), 3500)
+    return () => clearTimeout(t)
+  }, [voiceToast])
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) recognitionRef.current.stop()
+    }
+  }, [])
+
+  function handleMicClick() {
+    if (!SpeechRecognitionAPI) {
+      setVoiceToast({ type: 'warning', message: 'Tu navegador no soporta dictado por voz. Usá el teclado.' })
+      return
+    }
+    if (isListening) {
+      recognitionRef.current?.stop()
+      return
+    }
+
+    const recognition = new SpeechRecognitionAPI()
+    recognition.lang = 'es-ES'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+
+    recognition.onstart = () => setIsListening(true)
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript
+      setUserAnswer(prev => (prev ? `${prev} ${transcript}` : transcript))
+      answerInputRef.current?.blur()
+    }
+
+    recognition.onerror = (event) => {
+      if (event.error === 'not-allowed') {
+        setVoiceToast({ type: 'warning', message: 'Permiso de micrófono denegado. Usa el teclado.' })
+      } else if (event.error === 'no-speech') {
+        setVoiceToast({ type: 'info', message: 'No te escuchamos. Toca el botón y habla de nuevo.' })
+      }
+      setIsListening(false)
+    }
+
+    recognition.onend = () => setIsListening(false)
+
+    recognitionRef.current = recognition
+    recognition.start()
+  }
 
   async function fetchFeedback(q, correctAns, userAns, isCorrect) {
     setLoadingFeedback(true)
@@ -155,6 +218,21 @@ const mcqExplanation = current.back || current.explanation || ''
 
   return (
     <>
+      {voiceToast && (
+        <div style={{
+          position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 1000,
+          background: voiceToast.type === 'warning' ? 'var(--danger)' : 'var(--primary)',
+          color: '#fff', padding: '12px 20px', borderRadius: 14, fontWeight: 600,
+          fontSize: 13, boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+          animation: 'popIn 0.3s ease',
+          maxWidth: '85vw', textAlign: 'center',
+          pointerEvents: 'none',
+        }}>
+          {voiceToast.type === 'warning' ? '⚠️ ' : 'ℹ️ '}{voiceToast.message}
+        </div>
+      )}
+
       {showSocratic && (
         <SocraticSession
           concept={question}
@@ -304,14 +382,33 @@ const mcqExplanation = current.back || current.explanation || ''
 
             {/* Short answer: input */}
             {current.type === 'short_answer' && !shortAnswerSubmitted && (
-              <div style={{ marginTop: 20 }}>
+              <div style={{ marginTop: 20, position: 'relative' }}>
                 <textarea
+                  ref={answerInputRef}
                   value={userAnswer}
                   onChange={e => setUserAnswer(e.target.value)}
                   placeholder="Escribí tu respuesta con tus propias palabras..."
                   rows={4}
                   className="short-answer-input"
+                  style={{ paddingRight: 48 }}
                 />
+                <button
+                  onClick={handleMicClick}
+                  title={isListening ? 'Detener dictado' : 'Dictar por voz'}
+                  style={{
+                    position: 'absolute', right: 8, bottom: 8,
+                    width: 36, height: 36, borderRadius: '50%',
+                    border: 'none', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 16, transition: 'all 0.2s',
+                    background: isListening ? 'var(--danger)' : 'var(--primary-dim)',
+                    color: isListening ? '#fff' : 'var(--primary-light)',
+                    boxShadow: isListening ? '0 0 0 4px rgba(239,68,68,0.25)' : 'none',
+                    animation: isListening ? 'pulse 1.2s infinite' : 'none',
+                  }}
+                >
+                  🎤
+                </button>
               </div>
             )}
 
