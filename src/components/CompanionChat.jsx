@@ -2,6 +2,9 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../services/supabase'
 
 const HISTORY_KEY = (deckId) => `chat_history_${deckId}`
+const SpeechRecognitionAPI = typeof window !== 'undefined'
+  ? (window.SpeechRecognition || window.webkitSpeechRecognition)
+  : null
 
 export default function CompanionChat({ deck, onClose, onPaywall }) {
   const [messages, setMessages] = useState(() => {
@@ -13,16 +16,28 @@ export default function CompanionChat({ deck, onClose, onPaywall }) {
   })
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [voiceToast, setVoiceToast] = useState(null)
   const messagesEndRef = useRef(null)
   const textareaRef = useRef(null)
+  const recognitionRef = useRef(null)
   const isMobile = typeof window !== 'undefined' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)
   const hasHistory = messages.length > 1
 
   useEffect(() => {
     if (hasHistory) return
-    // No saved history — fetch a personalized opening from the API
     sendToKuma([], true)
   }, [])
+
+  useEffect(() => {
+    return () => { recognitionRef.current?.stop() }
+  }, [])
+
+  useEffect(() => {
+    if (!voiceToast) return
+    const t = setTimeout(() => setVoiceToast(null), 3500)
+    return () => clearTimeout(t)
+  }, [voiceToast])
 
   useEffect(() => {
     const updateHeight = () => {
@@ -100,6 +115,38 @@ export default function CompanionChat({ deck, onClose, onPaywall }) {
     await sendToKuma(apiHistory)
   }
 
+  function handleMicClick() {
+    if (!SpeechRecognitionAPI) {
+      setVoiceToast({ type: 'warning', message: 'Tu navegador no soporta dictado por voz.' })
+      return
+    }
+    if (isListening) {
+      recognitionRef.current?.stop()
+      return
+    }
+    const recognition = new SpeechRecognitionAPI()
+    recognition.lang = 'es-ES'
+    recognition.interimResults = false
+    recognition.maxAlternatives = 1
+    recognition.onstart = () => setIsListening(true)
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript
+      setInput(prev => (prev ? `${prev} ${transcript}` : transcript))
+      textareaRef.current?.focus()
+    }
+    recognition.onerror = (event) => {
+      if (event.error === 'not-allowed') {
+        setVoiceToast({ type: 'warning', message: 'Permiso de micrófono denegado.' })
+      } else if (event.error === 'no-speech') {
+        setVoiceToast({ type: 'info', message: 'No te escuchamos. Tocá el botón y hablá de nuevo.' })
+      }
+      setIsListening(false)
+    }
+    recognition.onend = () => setIsListening(false)
+    recognitionRef.current = recognition
+    recognition.start()
+  }
+
   function handleKeyDown(e) {
     if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
       e.preventDefault()
@@ -112,6 +159,19 @@ export default function CompanionChat({ deck, onClose, onPaywall }) {
 
   return (
     <div className="socratic-overlay">
+      {voiceToast && (
+        <div style={{
+          position: 'fixed', bottom: 90, left: '50%', transform: 'translateX(-50%)',
+          zIndex: 1000,
+          background: voiceToast.type === 'warning' ? 'var(--danger)' : 'var(--primary)',
+          color: '#fff', padding: '10px 18px', borderRadius: 14, fontWeight: 600,
+          fontSize: 13, boxShadow: '0 4px 24px rgba(0,0,0,0.3)',
+          animation: 'popIn 0.3s ease', maxWidth: '85vw', textAlign: 'center',
+          pointerEvents: 'none',
+        }}>
+          {voiceToast.type === 'warning' ? '⚠️ ' : 'ℹ️ '}{voiceToast.message}
+        </div>
+      )}
       <div className="socratic-container">
 
         {/* Header */}
@@ -204,6 +264,22 @@ export default function CompanionChat({ deck, onClose, onPaywall }) {
             className="socratic-textarea"
             style={{ minHeight: 44, maxHeight: 120 }}
           />
+          <button
+            onClick={handleMicClick}
+            title={isListening ? 'Detener dictado' : 'Dictar por voz'}
+            style={{
+              width: 40, height: 40, borderRadius: '50%', border: 'none',
+              cursor: 'pointer', flexShrink: 0,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 16, transition: 'all 0.2s',
+              background: isListening ? 'var(--danger)' : 'rgba(139,92,246,0.15)',
+              color: isListening ? '#fff' : 'var(--primary-light)',
+              boxShadow: isListening ? '0 0 0 4px rgba(239,68,68,0.25)' : 'none',
+              animation: isListening ? 'pulse 1.2s infinite' : 'none',
+            }}
+          >
+            🎤
+          </button>
           <button
             onClick={handleSend}
             disabled={!input.trim() || loading}
