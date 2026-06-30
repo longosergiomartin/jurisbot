@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useState, useRef } from 'react'
-import { getDueCards } from '../services/fsrs'
+import { getDueCards, getDeckMastery, retrievability } from '../services/fsrs'
 import { getLevel } from '../services/levels'
 import { getISOWeek } from '../services/storage'
 import WeeklyCalendar from './WeeklyCalendar'
@@ -25,13 +25,20 @@ function getSessionEstimate(totalDue) {
   return '~8 min'
 }
 
-export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck, authUser, syncState, lastSynced, onShowAuth, onRetry, onDeleteDeck, onUpgrade, upgrading, subscription, onCancelSubscription }) {
+export default function Dashboard({ user, decks, onStudy, onStudyWeak, onCompanion, onNewDeck, authUser, syncState, lastSynced, onShowAuth, onRetry, onDeleteDeck, onUpgrade, upgrading, subscription, onCancelSubscription }) {
   const deckStats = useMemo(() => {
+    const now = new Date()
     return decks.map(deck => {
       const due = getDueCards(deck.cards)
       const total = deck.cards.length
       const learned = deck.cards.filter(c => c.state === 'review').length
-      return { ...deck, dueCount: due.length, total, learned }
+      const mastery = getDeckMastery(deck.cards, now)
+      const weakCount = deck.cards.filter(c => {
+        if (c.state !== 'review' || !c.stability || !c.lastReview) return false
+        const elapsed = Math.max(0, (now - new Date(c.lastReview)) / 86400000)
+        return retrievability(c.stability, elapsed) < 0.7
+      }).length
+      return { ...deck, dueCount: due.length, total, learned, mastery, weakCount }
     })
   }, [decks])
 
@@ -521,7 +528,7 @@ export default function Dashboard({ user, decks, onStudy, onCompanion, onNewDeck
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
               {deckStats.map(deck => (
-                <DeckCard key={deck.id} deck={deck} onStudy={onStudy} onCompanion={onCompanion} onDelete={onDeleteDeck} />
+                <DeckCard key={deck.id} deck={deck} onStudy={onStudy} onStudyWeak={onStudyWeak} onCompanion={onCompanion} onDelete={onDeleteDeck} />
               ))}
             </div>
           )}
@@ -569,7 +576,7 @@ function getGoalStatus(goal, progress, total, learned) {
   }
 }
 
-function DeckCard({ deck, onStudy, onCompanion, onDelete }) {
+function DeckCard({ deck, onStudy, onStudyWeak, onCompanion, onDelete }) {
   const [confirmDelete, setConfirmDelete] = useState(false)
   const progress = deck.total > 0 ? Math.round((deck.learned / deck.total) * 100) : 0
   const nextDue = deck.dueCount === 0
@@ -657,6 +664,11 @@ function DeckCard({ deck, onStudy, onCompanion, onDelete }) {
                 </span>
               )}
             </div>
+            {deck.mastery !== null && deck.mastery > 0 && (
+              <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                Retención estimada: <span style={{ color: deck.mastery >= 80 ? 'var(--success)' : deck.mastery >= 50 ? 'var(--accent)' : 'var(--danger)', fontWeight: 600 }}>{deck.mastery}%</span>
+              </div>
+            )}
           </div>
           {deck.dueCount > 0 && (
             <span style={{
@@ -715,30 +727,73 @@ function DeckCard({ deck, onStudy, onCompanion, onDelete }) {
 
         {/* Action buttons */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 8 }}>
-          <button
-            onClick={() => onStudy(deck.id)}
-            title={deck.dueCount === 0 && nextDue
-              ? `Sin tarjetas para hoy — próxima revisión el ${nextDue.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'short' })}`
-              : deck.dueCount === 0 ? 'Sin tarjetas para hoy' : ''}
-            style={{
-              background: deck.dueCount > 0 ? 'linear-gradient(135deg, var(--primary), var(--pink))' : 'rgba(255,255,255,0.05)',
-              border: `1px solid ${deck.dueCount > 0 ? 'transparent' : 'var(--border)'}`,
-              borderRadius: 10,
-              padding: '9px 12px',
-              color: deck.dueCount > 0 ? '#fff' : 'var(--text-soft)',
-              fontSize: 13,
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'inherit',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 5,
-              boxShadow: deck.dueCount > 0 ? '0 2px 10px var(--primary-glow)' : 'none',
-            }}
-          >
-            {deck.dueCount > 0 ? '⚡ Repasar' : '✓ Al día'}
-          </button>
+          {deck.dueCount > 0 ? (
+            <button
+              onClick={() => onStudy(deck.id)}
+              style={{
+                background: 'linear-gradient(135deg, var(--primary), var(--pink))',
+                border: 'transparent',
+                borderRadius: 10,
+                padding: '9px 12px',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                boxShadow: '0 2px 10px var(--primary-glow)',
+              }}
+            >
+              ⚡ Repasar
+            </button>
+          ) : deck.weakCount > 0 ? (
+            <button
+              onClick={() => onStudyWeak(deck.id)}
+              title={`${deck.weakCount} tarjeta${deck.weakCount !== 1 ? 's' : ''} con retención baja — buena oportunidad para reforzar`}
+              style={{
+                background: 'rgba(251,191,36,0.12)',
+                border: '1px solid rgba(251,191,36,0.35)',
+                borderRadius: 10,
+                padding: '9px 12px',
+                color: 'var(--accent)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                fontFamily: 'inherit',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+              }}
+            >
+              🎯 Refuerzo
+            </button>
+          ) : (
+            <button
+              disabled
+              style={{
+                background: 'rgba(255,255,255,0.05)',
+                border: '1px solid var(--border)',
+                borderRadius: 10,
+                padding: '9px 12px',
+                color: 'var(--text-soft)',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'default',
+                fontFamily: 'inherit',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 5,
+                opacity: 0.5,
+              }}
+            >
+              ✓ Al día
+            </button>
+          )}
           <button
             onClick={e => { e.stopPropagation(); onCompanion(deck.id) }}
             style={{

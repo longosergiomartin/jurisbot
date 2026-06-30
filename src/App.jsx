@@ -11,9 +11,9 @@ import PaywallModal from './components/PaywallModal'
 import Auth from './components/Auth'
 import CancelSubscriptionModal from './components/CancelSubscriptionModal'
 import * as storage from './services/storage'
-import { getDueCards } from './services/fsrs'
+import { getDueCards, retrievability } from './services/fsrs'
 import { getLevel } from './services/levels'
-import { getNewUnlocks } from './services/unlocks'
+import { getNewUnlocks, getStreakMilestoneUnlocks } from './services/unlocks'
 import { supabase, isSupabaseEnabled } from './services/supabase'
 import { fetchProfile, fetchDecks, fetchSubscription, upsertProfile, upsertCards, migrateLocalToCloud, insertSession, deleteDeck as deleteDeckFromCloud } from './services/cloud'
 import { DEMO_DECK, DEMO_CARDS } from './data/demoCards'
@@ -397,6 +397,25 @@ export default function App() {
     setScreen('study')
   }
 
+  function handleStudyWeak(deckId) {
+    const deck = decks.find(d => d.id === deckId)
+    if (!deck) return
+    const now = new Date()
+    const weak = deck.cards
+      .filter(c => c.state === 'review' && c.stability > 0 && c.lastReview)
+      .map(c => {
+        const elapsed = Math.max(0, (now - new Date(c.lastReview)) / 86400000)
+        return { card: c, r: retrievability(c.stability, elapsed) }
+      })
+      .sort((a, b) => a.r - b.r)
+      .slice(0, 20)
+      .map(({ card }) => card)
+    if (weak.length === 0) return
+    setStudyCards(weak)
+    setActiveDeckId(deckId)
+    setScreen('study')
+  }
+
   async function handleSessionComplete(results) {
     const updatedDecks = storage.updateCards(activeDeckId, results.updatedCards)
     setDecks(updatedDecks)
@@ -409,7 +428,14 @@ export default function App() {
 
     // CG-3: detect new unlocks from level-up and persist them
     const levelUp = levelAfter.level > levelBefore.level ? levelAfter : null
-    const newUnlocks = levelUp ? getNewUnlocks(levelBefore.level, levelAfter.level) : []
+    const levelUnlocks = levelUp ? getNewUnlocks(levelBefore.level, levelAfter.level) : []
+
+    // S2-1: streak milestone unlocks — fire only when streak increments to a milestone value
+    const streakMilestoneUnlocks = updatedUser.streak > user.streak
+      ? getStreakMilestoneUnlocks(updatedUser.streak)
+      : []
+
+    const newUnlocks = [...levelUnlocks, ...streakMilestoneUnlocks]
     const userFinal = newUnlocks.length > 0
       ? { ...userWithXP, unlockedIds: [...(userWithXP.unlockedIds ?? []), ...newUnlocks.map(u => u.id)] }
       : userWithXP
@@ -529,6 +555,7 @@ export default function App() {
           user={user}
           decks={decks}
           onStudy={handleStudyDeck}
+          onStudyWeak={handleStudyWeak}
           onCompanion={handleOpenCompanion}
           onNewDeck={() => setScreen('upload')}
           authUser={authUser}
