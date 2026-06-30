@@ -93,6 +93,21 @@ export function getNextReviewText(card) {
   return `en ${days} día${days !== 1 ? 's' : ''}`
 }
 
+// CG-2 v1.1: which cards can earn clawback bonus XP on recall.
+// 'review' cards at risk always qualify. 'relearning' cards qualify only if
+// the lapse happened on a previous day — excludes same-session fail→pass farming
+// (fail a high-R review card, it drops to relearning, pass it minutes later for a bonus).
+export function isClawbackEligible(card, now = new Date()) {
+  if (!card || !card.stability || card.stability <= 0 || !card.lastReview) return false
+  if (card.state === 'review') return true
+  if (card.state === 'relearning') {
+    const lastDay = new Date(card.lastReview).toISOString().slice(0, 10)
+    const today = now.toISOString().slice(0, 10)
+    return lastDay !== today
+  }
+  return false
+}
+
 // CG-5: Deck mastery = average predicted retrievability across all cards.
 // new/learning/relearning cards contribute 0 (not yet mastered).
 // Returns 0–100 (integer %) or null if deck has no cards.
