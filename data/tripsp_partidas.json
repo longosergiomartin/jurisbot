@@ -1,0 +1,594 @@
+[
+  {
+    "codigo_partida":"10000dd",
+    "apartado":"APARTADO A: Información para supervisión",
+    "punto":"II.2",
+    "grupo":"Cuentas de pago de clientes",
+    "concepto":"Sumatoria de saldos de cuentas de pago de clientes",
+    "campos":"Saldo, Cantidad"
+  },
+  {
+    "codigo_partida":"50000dd",
+    "apartado":"APARTADO A: Información para supervisión",
+    "punto":"II.2",
+    "grupo":"Cuentas de pago de clientes",
+    "concepto":"Cantidad total de cuentas de pago de los clientes",
+    "campos":"Cantidad"
+  },
+  {
+    "codigo_partida":"20000dd",
+    "apartado":"APARTADO A: Información para supervisión",
+    "punto":"II.2",
+    "grupo":"Cuentas de pago de clientes",
+    "concepto":"Saldos en cuentas a la vista por entidad financiera",
+    "campos":"Saldo, CBU\/Nro registro del Fondo"
+  },
+  {
+    "codigo_partida":"30000dd",
+    "apartado":"APARTADO A: Información para supervisión",
+    "punto":"II.2",
+    "grupo":"Inversiones en fondos comunes de dinero",
+    "concepto":"Sumatoria de saldos invertidos en fondos comunes de dinero",
+    "campos":"Saldo, Cantidad"
+  },
+  {
+    "codigo_partida":"40000dd",
+    "apartado":"APARTADO A: Información para supervisión",
+    "punto":"II.2",
+    "grupo":"Inversiones en fondos comunes de dinero",
+    "concepto":"Saldos invertidos por fondo común de dinero",
+    "campos":"Saldo, Cantidad, CBU\/Nro registro del Fondo"
+  },
+  {
+    "codigo_partida":"60000dd",
+    "apartado":"APARTADO A: Información para supervisión",
+    "punto":"II.2",
+    "grupo":null,
+    "concepto":"Sumatoria de saldos a liquidar en cuentas de pago",
+    "campos":"Saldo, Cantidad"
+  },
+  {
+    "codigo_partida":"10101XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Comercial",
+    "concepto":"ApMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10102XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Comercial",
+    "concepto":"ApMovil-QR",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10103XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Comercial",
+    "concepto":"ApMovil-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10104XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Comercial",
+    "concepto":"ApWeb-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10105XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Comercial",
+    "concepto":"TPV\/TPVMovil-Banda magnética",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10106XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Comercial",
+    "concepto":"TPV\/TPVMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10107XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Comercial",
+    "concepto":"TPV\/TPVMovil-Chip",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10108XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Comercial",
+    "concepto":"Sucursal\/Agente\/Comercio",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10109XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Comercial",
+    "concepto":"Cajero automático",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10199XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Comercial",
+    "concepto":"No disponible\/No conocida",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10201XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"ApMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10202XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"ApMovil-QR",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10203XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"ApMovil-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10204XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"ApWeb-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10205XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"TPV\/TPVMovil-Banda magnética",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10206XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"TPV\/TPVMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10207XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"TPV\/TPVMovil-Chip",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10208XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"Sucursal\/Agente\/Comercio",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10209XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"Cajero automático",
+    "campos":null
+  },
+  {
+    "codigo_partida":"10299XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CREDITOS EN \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"No disponible\/No conocida",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20101XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Comercial",
+    "concepto":"ApMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20102XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Comercial",
+    "concepto":"ApMovil-QR",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20103XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Comercial",
+    "concepto":"ApMovil-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20104XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Comercial",
+    "concepto":"ApWeb-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20105XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Comercial",
+    "concepto":"TPV\/TPVMovil-Banda magnética",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20106XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Comercial",
+    "concepto":"TPV\/TPVMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20107XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Comercial",
+    "concepto":"TPV\/TPVMovil-Chip",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20201XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"ApMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20202XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"ApMovil-QR",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20203XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"ApMovil-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20204XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"ApWeb-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20205XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"TPV\/TPVMovil-Banda magnética",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20206XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"TPV\/TPVMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"20207XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de pago propia – Personal\/No comercial",
+    "concepto":"TPV\/TPVMovil-Chip",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2030100",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de otro PSPCP",
+    "concepto":"ApMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2030200",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de otro PSPCP",
+    "concepto":"ApMovil-QR",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2030300",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de otro PSPCP",
+    "concepto":"ApMovil-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2030400",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de otro PSPCP",
+    "concepto":"ApWeb-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2030500",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de otro PSPCP",
+    "concepto":"TPV\/TPVMovil-Banda magnética",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2030600",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de otro PSPCP",
+    "concepto":"TPV\/TPVMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2030700",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de otro PSPCP",
+    "concepto":"TPV\/TPVMovil-Chip",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2040100",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de EF",
+    "concepto":"ApMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2040200",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de EF",
+    "concepto":"ApMovil-QR",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2040300",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de EF",
+    "concepto":"ApMovil-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2040400",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de EF",
+    "concepto":"ApWeb-Botón de pago",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2040500",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de EF",
+    "concepto":"TPV\/TPVMovil-Banda magnética",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2040600",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de EF",
+    "concepto":"TPV\/TPVMovil-Cercanía Sin Contacto",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2040700",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Cuenta de EF",
+    "concepto":"TPV\/TPVMovil-Chip",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2050100",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Otros",
+    "concepto":"Sucursal\/Agente\/Comercio",
+    "campos":null
+  },
+  {
+    "codigo_partida":"2050200",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"DEBITOS A \/ Otros",
+    "concepto":"Cajero automático",
+    "campos":null
+  },
+  {
+    "codigo_partida":"5001000",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"TRANSFERENCIAS",
+    "concepto":"De CVU a CBU",
+    "campos":null
+  },
+  {
+    "codigo_partida":"5002000",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"TRANSFERENCIAS",
+    "concepto":"De CBU a CVU",
+    "campos":null
+  },
+  {
+    "codigo_partida":"5003000",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"TRANSFERENCIAS",
+    "concepto":"De CVU a CVU acreditadas",
+    "campos":null
+  },
+  {
+    "codigo_partida":"5004000",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"TRANSFERENCIAS",
+    "concepto":"De CVU a CVU debitadas",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60110XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de clientes involucrados en transacciones",
+    "concepto":"Comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60120XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de clientes involucrados en transacciones",
+    "concepto":"Personal\/No comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60130XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de clientes involucrados en transferencias",
+    "concepto":"Comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60140XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de clientes involucrados en transferencias",
+    "concepto":"Personal\/No comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60210XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de cuentas de pago involucradas en transacciones",
+    "concepto":"Comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60220XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de cuentas de pago involucradas en transacciones",
+    "concepto":"Personal\/No comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60230XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de cuentas de pago involucradas en transferencias",
+    "concepto":"Comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60240XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de cuentas de pago involucradas en transferencias",
+    "concepto":"Personal\/No comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60310XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de clientes",
+    "concepto":"Comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60320XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de clientes",
+    "concepto":"Personal\/No comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60410XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de cuentas de pago",
+    "concepto":"Comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"60420XX",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"CLIENTES Y CUENTAS \/ Total de cuentas de pago",
+    "concepto":"Personal\/No comercial",
+    "campos":null
+  },
+  {
+    "codigo_partida":"7011000",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"PRÉSTAMOS",
+    "concepto":"Otorgados a clientes",
+    "campos":null
+  },
+  {
+    "codigo_partida":"7012000",
+    "apartado":"APARTADO B: Información estadística – Sistema Nacional de Pagos",
+    "punto":"III.2",
+    "grupo":"PRÉSTAMOS",
+    "concepto":"Cancelados por parte de clientes",
+    "campos":null
+  }
+]
