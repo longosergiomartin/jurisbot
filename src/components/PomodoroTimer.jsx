@@ -186,7 +186,7 @@ export default function PomodoroTimer({ autoStart = false }) {
             {/* Circular ring + time */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 14 }}>
               <svg width={56} height={56} style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx={28} cy={28} r={RADIUS} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={4} />
+                <circle cx={28} cy={28} r={RADIUS} fill="none" stroke="var(--fill-strong)" strokeWidth={4} />
                 <circle
                   cx={28} cy={28} r={RADIUS}
                   fill="none"
@@ -223,7 +223,7 @@ export default function PomodoroTimer({ autoStart = false }) {
                 onClick={skipBreak}
                 title="Reiniciar"
                 style={{
-                  background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
+                  background: 'var(--fill)', border: '1px solid var(--border)',
                   borderRadius: 8, padding: '7px 10px', color: 'var(--text-muted)',
                   fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
                 }}
@@ -251,7 +251,7 @@ export default function PomodoroTimer({ autoStart = false }) {
             }}
           >
             <svg width={24} height={24} style={{ transform: 'rotate(-90deg)', flexShrink: 0 }}>
-              <circle cx={12} cy={12} r={9} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={2.5} />
+              <circle cx={12} cy={12} r={9} fill="none" stroke="var(--fill-strong)" strokeWidth={2.5} />
               <circle
                 cx={12} cy={12} r={9}
                 fill="none"

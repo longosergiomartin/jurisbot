@@ -148,7 +148,7 @@ export default function Upload({ onReady, onBack }) {
         {/* Input mode tabs */}
         <div style={{
           display: 'flex', gap: 3, marginBottom: 12,
-          background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 3,
+          background: 'var(--fill)', borderRadius: 12, padding: 3,
         }}>
           {INPUT_TABS.map(tab => (
             <button
@@ -177,7 +177,7 @@ export default function Upload({ onReady, onBack }) {
               rows={8}
               style={{
                 width: '100%',
-                background: 'rgba(255,255,255,0.04)',
+                background: 'var(--fill)',
                 border: '1.5px solid var(--border)',
                 borderRadius: 14,
                 padding: '14px',
@@ -223,7 +223,7 @@ export default function Upload({ onReady, onBack }) {
               padding: '28px 20px',
               textAlign: 'center',
               cursor: fileData ? 'default' : 'pointer',
-              background: fileData ? 'var(--success-dim)' : dragging ? 'var(--primary-dim)' : 'rgba(255,255,255,0.02)',
+              background: fileData ? 'var(--success-dim)' : dragging ? 'var(--primary-dim)' : 'var(--fill-soft)',
               transition: 'all 0.2s',
               marginBottom: 14,
             }}
@@ -260,7 +260,7 @@ export default function Upload({ onReady, onBack }) {
               placeholder="https://..."
               style={{
                 width: '100%',
-                background: 'rgba(255,255,255,0.04)',
+                background: 'var(--fill)',
                 border: '1.5px solid var(--border)',
                 borderRadius: 12,
                 padding: '13px 14px',
@@ -299,7 +299,7 @@ export default function Upload({ onReady, onBack }) {
             maxLength={60}
             style={{
               width: '100%',
-              background: 'rgba(255,255,255,0.05)',
+              background: 'var(--fill)',
               border: '1.5px solid var(--border)',
               borderRadius: 12,
               padding: '11px 14px',
@@ -317,7 +317,7 @@ export default function Upload({ onReady, onBack }) {
           onClick={() => setShowAdvanced(v => !v)}
           style={{
             width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border)',
+            background: 'var(--fill-soft)', border: '1px solid var(--border)',
             borderRadius: 10, padding: '10px 14px', cursor: 'pointer',
             fontFamily: 'inherit', marginBottom: showAdvanced ? 0 : 16,
             transition: 'all 0.2s',
@@ -332,7 +332,7 @@ export default function Upload({ onReady, onBack }) {
         </button>
 
         {showAdvanced && (
-          <div style={{ border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px', marginBottom: 16, background: 'rgba(255,255,255,0.02)' }}>
+          <div style={{ border: '1px solid var(--border)', borderTop: 'none', borderRadius: '0 0 10px 10px', padding: '14px', marginBottom: 16, background: 'var(--fill-soft)' }}>
 
             {/* Card count */}
             <div style={{ marginBottom: 18 }}>
@@ -356,7 +356,7 @@ export default function Upload({ onReady, onBack }) {
                 onClick={() => setChapterInfo(v => ({ ...v, enabled: !v.enabled }))}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  background: chapterInfo.enabled ? 'var(--teal-dim)' : 'rgba(255,255,255,0.03)',
+                  background: chapterInfo.enabled ? 'var(--teal-dim)' : 'var(--fill-soft)',
                   border: `1.5px solid ${chapterInfo.enabled ? 'rgba(34,211,238,0.35)' : 'var(--border)'}`,
                   borderRadius: 10, padding: '10px 14px', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit',
                 }}
@@ -384,7 +384,7 @@ export default function Upload({ onReady, onBack }) {
                           type="number" min={1} placeholder={field === 'current' ? '3' : '10'}
                           value={chapterInfo[field]}
                           onChange={e => setChapterInfo(v => ({ ...v, [field]: e.target.value }))}
-                          style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '9px 12px', fontSize: 14, outline: 'none', color: 'var(--text)' }}
+                          style={{ width: '100%', background: 'var(--fill)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '9px 12px', fontSize: 14, outline: 'none', color: 'var(--text)' }}
                           onFocus={e => e.target.style.borderColor = 'var(--teal)'}
                           onBlur={e => e.target.style.borderColor = 'var(--border)'}
                         />
@@ -401,7 +401,7 @@ export default function Upload({ onReady, onBack }) {
                 onClick={() => setHasGoal(v => !v)}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                  background: hasGoal ? 'var(--accent-dim)' : 'rgba(255,255,255,0.03)',
+                  background: hasGoal ? 'var(--accent-dim)' : 'var(--fill-soft)',
                   border: `1.5px solid ${hasGoal ? 'rgba(251,191,36,0.35)' : 'var(--border)'}`,
                   borderRadius: 10, padding: '10px 14px', cursor: 'pointer', transition: 'all 0.2s', fontFamily: 'inherit',
                 }}
@@ -425,7 +425,7 @@ export default function Upload({ onReady, onBack }) {
                   <input
                     type="date" value={targetDate} min={getTodayStr()}
                     onChange={e => setTargetDate(e.target.value)}
-                    style={{ width: '100%', background: 'rgba(255,255,255,0.05)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '9px 12px', fontSize: 14, outline: 'none', color: 'var(--text)', colorScheme: 'dark' }}
+                    style={{ width: '100%', background: 'var(--fill)', border: '1.5px solid var(--border)', borderRadius: 8, padding: '9px 12px', fontSize: 14, outline: 'none', color: 'var(--text)', colorScheme: 'light' }}
                     onFocus={e => e.target.style.borderColor = 'var(--accent)'}
                     onBlur={e => e.target.style.borderColor = 'var(--border)'}
                   />
@@ -443,7 +443,7 @@ export default function Upload({ onReady, onBack }) {
           </label>
           <div style={{
             display: 'flex', gap: 3,
-            background: 'rgba(255,255,255,0.04)', borderRadius: 12, padding: 3,
+            background: 'var(--fill)', borderRadius: 12, padding: 3,
           }}>
             {DIFFICULTY_OPTIONS.map(opt => (
               <button
@@ -482,7 +482,7 @@ function Toggle({ on, color }) {
   return (
     <div style={{
       width: 38, height: 21, borderRadius: 11,
-      background: on ? color : 'rgba(255,255,255,0.1)',
+      background: on ? color : 'var(--fill-strong)',
       position: 'relative', transition: 'background 0.2s', flexShrink: 0,
     }}>
       <div style={{

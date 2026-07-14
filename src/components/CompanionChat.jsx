@@ -187,7 +187,7 @@ export default function CompanionChat({ deck, onClose, onPaywall }) {
           </div>
           <button
             onClick={onClose}
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--border)', borderRadius: 10, padding: '7px 14px', color: 'var(--text-soft)', fontSize: 13, fontWeight: 600 }}
+            style={{ background: 'var(--fill)', border: '1px solid var(--border)', borderRadius: 10, padding: '7px 14px', color: 'var(--text-soft)', fontSize: 13, fontWeight: 600 }}
           >
             ← Volver
           </button>
