@@ -1,0 +1,117 @@
+[
+  {
+    "categoria":"Método de iniciación\/Canal de acceso",
+    "termino":"ApMovil-Cercanía Sin Contacto",
+    "definicion":"Método de iniciación donde quien realiza el pago (cliente ordenante) apoya su celular en un lector de NFC (tecnología sin contacto) del comercio (cliente receptor)."
+  },
+  {
+    "categoria":"Método de iniciación\/Canal de acceso",
+    "termino":"ApMovil-QR",
+    "definicion":"Método de iniciación donde quien realiza el pago (cliente ordenante) escanea con su celular un código QR expuesto por el comercio (cliente receptor)."
+  },
+  {
+    "categoria":"Método de iniciación\/Canal de acceso",
+    "termino":"ApMovil-Botón de pago",
+    "definicion":"Método de iniciación donde el cliente ordenante realiza el pago o transferencia ingresando a un link\/botón dentro de una aplicación móvil."
+  },
+  {
+    "categoria":"Método de iniciación\/Canal de acceso",
+    "termino":"ApWeb-Botón de pago",
+    "definicion":"Método de iniciación donde el cliente ordenante realiza el pago o transferencia ingresando a un link\/botón que se encuentra en un sitio Web."
+  },
+  {
+    "categoria":"Método de iniciación\/Canal de acceso",
+    "termino":"TPV\/TPVMovil-Banda magnética",
+    "definicion":"Método de iniciación donde el pago se realiza leyendo, con una terminal de punto de venta (POS), las credenciales de una tarjeta de pago a través de la banda magnética."
+  },
+  {
+    "categoria":"Método de iniciación\/Canal de acceso",
+    "termino":"TPV\/TPVMovil-Cercanía Sin Contacto",
+    "definicion":"Método de iniciación donde el pago se realiza leyendo, con una terminal de punto de venta (POS), las credenciales de una tarjeta de pago a través del chip NFC de tecnología sin contacto."
+  },
+  {
+    "categoria":"Método de iniciación\/Canal de acceso",
+    "termino":"TPV\/TPVMovil-Chip",
+    "definicion":"Método de iniciación donde el pago se realiza leyendo, con una terminal de punto de venta (POS), las credenciales de una tarjeta de pago a través del chip EMV."
+  },
+  {
+    "categoria":"Método de iniciación\/Canal de acceso",
+    "termino":"Sucursal\/Agente\/Comercio",
+    "definicion":"Canal de acceso utilizado cuando un pago, depósito o extracción se realiza con efectivo en un comercio o agencia de recaudación."
+  },
+  {
+    "categoria":"Método de iniciación\/Canal de acceso",
+    "termino":"Cajero automático",
+    "definicion":"Canal de acceso utilizado cuando un pago, depósito o extracción se realiza con efectivo a través de un cajero automático."
+  },
+  {
+    "categoria":"Método de iniciación\/Canal de acceso",
+    "termino":"No disponible\/No conocida",
+    "definicion":"Concepto para utilizar en caso de no contar con la información del método de iniciación o canal de acceso de las operaciones."
+  },
+  {
+    "categoria":"Cuenta a acreditar",
+    "termino":"Cuenta de pago \"comercial\"",
+    "definicion":"Se debe utilizar cuando los movimientos habituales de la cuenta están relacionados con la actividad comercial del cliente (puede ser persona humana o jurídica). El criterio para definir la categoría a partir de la habitualidad es atribución de cada PSPCP."
+  },
+  {
+    "categoria":"Cuenta a acreditar",
+    "termino":"Cuenta de pago \"personal\/no comercial\"",
+    "definicion":"Se debe utilizar cuando los movimientos no se relacionan con actividades comerciales (puede ser persona humana o jurídica)."
+  },
+  {
+    "categoria":"Cuenta a acreditar",
+    "termino":"Cuenta de otro PSPCP",
+    "definicion":"Se utiliza en el caso de que quien recibe el pago o transferencia acredite sus fondos en una cuenta de pago de otro PSPCP distinto a quien realiza la presentación al RI."
+  },
+  {
+    "categoria":"Cuenta a acreditar",
+    "termino":"Cuenta de EF",
+    "definicion":"Se utiliza en el caso de que quien recibe el pago o transferencia acredite sus fondos en una cuenta bancaria."
+  },
+  {
+    "categoria":"Cuenta a acreditar",
+    "termino":"Otros",
+    "definicion":"Se utiliza en el caso de que los fondos no se acreditan en una cuenta, sino que son extraídos en efectivo."
+  },
+  {
+    "categoria":"Transferencias",
+    "termino":"De CVU a CBU",
+    "definicion":"Transferencias cursadas desde CVU de clientes del PSPCP a cuentas en entidades financieras."
+  },
+  {
+    "categoria":"Transferencias",
+    "termino":"De CBU a CVU",
+    "definicion":"Transferencias recibidas desde cuentas en entidades financieras a CVU de clientes del PSPCP."
+  },
+  {
+    "categoria":"Transferencias",
+    "termino":"De CVU a CVU acreditadas",
+    "definicion":"Transferencias recibidas desde cuentas de pago (de otro PSPCP o del PSPCP que realiza la presentación) a la CVU de clientes del PSPCP."
+  },
+  {
+    "categoria":"Transferencias",
+    "termino":"De CVU a CVU debitadas",
+    "definicion":"Transferencias cursadas desde CVU de clientes del PSPCP a cuentas de pago (de otro PSPCP o del PSPCP que realiza la presentación)."
+  },
+  {
+    "categoria":"Medios de pago",
+    "termino":"Transferencias inmediatas \"push\"",
+    "definicion":"Envíos de fondos que debitan la cuenta del cliente ordenante y acreditan la cuenta del cliente receptor de forma instantánea."
+  },
+  {
+    "categoria":"Medios de pago",
+    "termino":"Transferencias inmediatas \"pull\"",
+    "definicion":"Solicitudes o pedidos de fondos que permiten mediante el débito de la cuenta -a la vista o de pago- del cliente receptor de la solicitud y previa autorización o consentimiento, tanto tácito como explícito, la acreditación inmediata de fondos en la cuenta del cliente solicitante."
+  },
+  {
+    "categoria":"Medios de pago",
+    "termino":"Pago con transferencia (PCT)",
+    "definicion":"Transferencias inmediatas utilizadas para realizar un pago por la adquisición de un bien y\/o servicio con participación de un aceptador. El aceptador ofrece a los comercios las herramientas para cobrar con ese medio de pago. Los PCT cuentan con reglas comerciales distintas al resto de las transferencias inmediatas."
+  },
+  {
+    "categoria":"Medios de pago",
+    "termino":"Débito inmediato (DEBIN)",
+    "definicion":"Transferencia en línea en la cual quien cobra inicia el trámite y quien paga solo debe aceptarlo (con una autorización operación por operación que se denomina \"DEBIN spot\" o con una autorización general para el caso de \"DEBIN recurrente\"); no se informarán como DEBIN las transacciones de fondeo de cuentas propias, que se deben informar como transferencias inmediatas \"pull\"."
+  }
+]
