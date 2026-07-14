@@ -67,7 +67,7 @@ function CardItem({ card, onDelete, onSave, onRegenerate, regenerating }) {
                 <button
                   onClick={() => setEditing(true)}
                   style={{
-                    background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                    background: 'var(--fill)', border: '1px solid var(--border)',
                     borderRadius: 8, padding: '3px 10px', fontSize: 12,
                     color: 'var(--text-muted)', cursor: 'pointer', fontFamily: 'inherit',
                   }}
@@ -102,7 +102,7 @@ function CardItem({ card, onDelete, onSave, onRegenerate, regenerating }) {
                 rows={3}
                 autoFocus
                 style={{
-                  width: '100%', background: 'rgba(255,255,255,0.05)',
+                  width: '100%', background: 'var(--fill)',
                   border: '1px solid var(--primary)', borderRadius: 8,
                   padding: '8px 10px', fontSize: 13, color: 'var(--text)',
                   resize: 'vertical', fontFamily: 'inherit', outline: 'none',
@@ -118,7 +118,7 @@ function CardItem({ card, onDelete, onSave, onRegenerate, regenerating }) {
                 onChange={e => setBack(e.target.value)}
                 rows={3}
                 style={{
-                  width: '100%', background: 'rgba(255,255,255,0.05)',
+                  width: '100%', background: 'var(--fill)',
                   border: '1px solid var(--border)', borderRadius: 8,
                   padding: '8px 10px', fontSize: 13, color: 'var(--text)',
                   resize: 'vertical', fontFamily: 'inherit', outline: 'none',
@@ -152,7 +152,7 @@ function CardItem({ card, onDelete, onSave, onRegenerate, regenerating }) {
                 {card.options.map((opt, i) => (
                   <div key={i} style={{
                     fontSize: 12, padding: '4px 8px', borderRadius: 6,
-                    background: i === card.correctIndex ? 'var(--success-dim)' : 'rgba(255,255,255,0.03)',
+                    background: i === card.correctIndex ? 'var(--success-dim)' : 'var(--fill-soft)',
                     border: `1px solid ${i === card.correctIndex ? 'rgba(52,211,153,0.3)' : 'var(--border)'}`,
                     color: i === card.correctIndex ? 'var(--success)' : 'var(--text-muted)',
                   }}>
@@ -289,7 +289,7 @@ export default function CardPreview({ deck, source, onStart, onBack }) {
               onClick={handleRedistribute}
               disabled={redistributing}
               style={{
-                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border)',
+                background: 'var(--fill)', border: '1px solid var(--border)',
                 borderRadius: 10, padding: '7px 12px', fontSize: 12,
                 color: 'var(--text-muted)', cursor: redistributing ? 'not-allowed' : 'pointer',
                 fontFamily: 'inherit', flexShrink: 0, whiteSpace: 'nowrap',
@@ -337,7 +337,7 @@ export default function CardPreview({ deck, source, onStart, onBack }) {
         <button
           onClick={handleAddManual}
           style={{
-            width: '100%', background: 'rgba(255,255,255,0.03)',
+            width: '100%', background: 'var(--fill-soft)',
             border: '1px dashed var(--border)', borderRadius: 12,
             padding: '12px', fontSize: 13, color: 'var(--text-muted)',
             cursor: 'pointer', fontFamily: 'inherit', marginBottom: 20,

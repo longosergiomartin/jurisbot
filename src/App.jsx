@@ -7,6 +7,9 @@ import CardPreview from './components/CardPreview'
 import StudySession from './components/StudySession'
 import SessionComplete from './components/SessionComplete'
 import CompanionChat from './components/CompanionChat'
+import DeckPath from './components/DeckPath'
+import Profile from './components/Profile'
+import TabBar from './components/TabBar'
 import PaywallModal from './components/PaywallModal'
 import Auth from './components/Auth'
 import CancelSubscriptionModal from './components/CancelSubscriptionModal'
@@ -26,6 +29,7 @@ export default function App() {
   const [studyCards, setStudyCards] = useState([])
   const [activeDeckId, setActiveDeckId] = useState(null)
   const [sessionResults, setSessionResults] = useState(null)
+  const [sessionOrigin, setSessionOrigin] = useState('dashboard')
   const [companionDeckId, setCompanionDeckId] = useState(null)
   const [authUser, setAuthUser] = useState(null)
   const [authSession, setAuthSession] = useState(null)
@@ -338,6 +342,7 @@ export default function App() {
     setDecks(updatedDecks)
     setStudyCards(DEMO_CARDS)
     setActiveDeckId(DEMO_DECK.id)
+    setSessionOrigin('dashboard')
     setScreen('study')
   }
 
@@ -369,6 +374,7 @@ export default function App() {
     setDecks(updatedDecks)
     const studySet = modifiedCards.slice(0, Math.min(modifiedCards.length, 20))
     setStudyCards(studySet)
+    setSessionOrigin('dashboard')
     setScreen('study')
   }
 
@@ -377,7 +383,32 @@ export default function App() {
       const updatedDecks = storage.updateCards(activeDeckId, partialUpdatedCards)
       setDecks(updatedDecks)
     }
-    setScreen('dashboard')
+    setScreen(sessionOrigin === 'path' ? 'path' : 'dashboard')
+  }
+
+  function handleOpenPath(deckId) {
+    setActiveDeckId(deckId)
+    setScreen('path')
+  }
+
+  function handleStartLesson(node) {
+    setStudyCards(node.cards)
+    setSessionOrigin('path')
+    setScreen('study')
+  }
+
+  function handleNavigate(tab) {
+    if (tab === 'companion') {
+      if (decks.length === 0) {
+        setScreen('upload')
+        return
+      }
+      const latest = [...decks].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0]
+      setCompanionDeckId(latest.id)
+      setScreen('companion')
+      return
+    }
+    setScreen(tab)
   }
 
   async function handleDeleteDeck(deckId) {
@@ -394,6 +425,7 @@ export default function App() {
     const due = getDueCards(deck.cards)
     setStudyCards(due.length > 0 ? due : deck.cards.slice(0, 10))
     setActiveDeckId(deckId)
+    setSessionOrigin('dashboard')
     setScreen('study')
   }
 
@@ -470,7 +502,7 @@ export default function App() {
 
   function handleSessionDone() {
     setSessionResults(null)
-    setScreen('dashboard')
+    setScreen(sessionOrigin === 'path' ? 'path' : 'dashboard')
   }
 
   function handleOpenCompanion(deckId) {
@@ -529,24 +561,53 @@ export default function App() {
           user={user}
           decks={decks}
           onStudy={handleStudyDeck}
+          onOpenPath={handleOpenPath}
           onCompanion={handleOpenCompanion}
           onNewDeck={() => setScreen('upload')}
+          authUser={authUser}
+          onShowAuth={() => setShowAuth(true)}
+          onDeleteDeck={handleDeleteDeck}
+        />
+      )}
+      {screen === 'path' && activeDeckId && (() => {
+        const deck = decks.find(d => d.id === activeDeckId)
+        if (!deck) return null
+        return (
+          <DeckPath
+            deck={deck}
+            user={user}
+            onStartLesson={handleStartLesson}
+            onBack={() => setScreen('dashboard')}
+            onCompanion={handleOpenCompanion}
+          />
+        )
+      })()}
+      {screen === 'profile' && user && (
+        <Profile
+          user={user}
+          decks={decks}
           authUser={authUser}
           syncState={syncState}
           lastSynced={lastSynced}
           onShowAuth={() => setShowAuth(true)}
           onRetry={retrySync}
-          onDeleteDeck={handleDeleteDeck}
           onUpgrade={handleUpgrade}
           upgrading={upgrading}
           subscription={subscription}
           onCancelSubscription={() => setShowCancelModal(true)}
         />
       )}
+      {['dashboard', 'path', 'profile'].includes(screen) && user && (
+        <TabBar
+          active={screen === 'path' ? 'dashboard' : screen}
+          onNavigate={handleNavigate}
+        />
+      )}
       {screen === 'study' && (
         <StudySession
           cards={studyCards}
           deckId={activeDeckId}
+          user={user}
           onComplete={handleSessionComplete}
           onExit={handleStudyExit}
         />

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { scheduleCard, retrievability, isClawbackEligible } from '../services/fsrs'
 import SocraticSession from './SocraticSession'
+import KumaAvatar from './KumaAvatar'
 
 const SpeechRecognitionAPI = typeof window !== 'undefined'
   ? (window.SpeechRecognition || window.webkitSpeechRecognition)
@@ -20,7 +21,7 @@ const CARD_LABELS = {
   short_answer: '✍️ Respuesta corta',
 }
 
-export default function StudySession({ cards, deckId, onComplete, onExit }) {
+export default function StudySession({ cards, deckId, user, onComplete, onExit }) {
   const [queue] = useState(() => [...cards])
   const [currentIndex, setCurrentIndex] = useState(0)
   const [revealed, setRevealed] = useState(false)
@@ -34,6 +35,7 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
   const [pendingRating, setPendingRating] = useState(null)
   const [updatedCards, setUpdatedCards] = useState([])
   const [results, setResults] = useState({ correct: 0, wrong: 0 })
+  const [combo, setCombo] = useState(0)
   const [xpBonus, setXpBonus] = useState(0)
   const [startTime] = useState(Date.now())
   const [showExitConfirm, setShowExitConfirm] = useState(false)
@@ -172,7 +174,7 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
 
   function selectRating(value) {
     if (pendingRating !== null) return
-    setUndoState({ currentIndex, updatedCards: [...updatedCards], results: { ...results }, xpBonus })
+    setUndoState({ currentIndex, updatedCards: [...updatedCards], results: { ...results }, xpBonus, combo })
     setPendingRating(value)
     setTimeout(() => handleRate(value), 480)
   }
@@ -198,6 +200,7 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
       wrong: results.wrong + (isCorrect ? 0 : 1),
     }
     setResults(newResults)
+    setCombo(isCorrect ? combo + 1 : 0)
 
     const nextIndex = currentIndex + 1
     if (nextIndex >= queue.length) {
@@ -215,7 +218,7 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
       setCurrentIndex(nextIndex)
       setCanUndo(true)
     }
-  }, [current, currentIndex, queue, updatedCards, results, xpBonus, total, startTime, onComplete])
+  }, [current, currentIndex, queue, updatedCards, results, combo, xpBonus, total, startTime, onComplete])
 
   function handleUndo() {
     if (!canUndo || !undoState) return
@@ -223,6 +226,7 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
     setUpdatedCards(undoState.updatedCards)
     setResults(undoState.results)
     setXpBonus(undoState.xpBonus ?? 0)
+    setCombo(undoState.combo ?? 0)
     setCanUndo(false)
     setUndoState(null)
     setPendingRating(null)
@@ -235,7 +239,23 @@ export default function StudySession({ cards, deckId, onComplete, onExit }) {
 
   if (!current) return null
 
-const mcqExplanation = current.back || current.explanation || ''
+  const mcqExplanation = current.back || current.explanation || ''
+
+  // Duolingo-style bottom feedback banner: MCQ shows it until continue;
+  // flashcard/short answer flash it during the rating-confirm delay.
+  const feedbackBanner = (() => {
+    if (current.type === 'mcq' && mcqResult) {
+      return mcqResult === 'correct'
+        ? { kind: 'correct', icon: '✅', text: '¡Correcto!' }
+        : { kind: 'wrong', icon: '❌', text: `Correcta: ${current.options[current.correctIndex]}` }
+    }
+    if (pendingRating !== null) {
+      return pendingRating >= 3
+        ? { kind: 'correct', icon: pendingRating === 4 ? '😎' : '✅', text: pendingRating === 4 ? '¡La tenés dominada!' : '¡Bien ahí!' }
+        : { kind: 'wrong', icon: '💪', text: 'La vas a ver de nuevo pronto' }
+    }
+    return null
+  })()
 
   return (
     <>
@@ -302,7 +322,7 @@ const mcqExplanation = current.back || current.explanation || ''
         </div>
       )}
 
-      <div className="screen" style={{ paddingTop: 16 }}>
+      <div className="screen" style={{ paddingTop: 16, paddingBottom: feedbackBanner ? 120 : 24 }}>
         <div className="container animate-fade">
 
           {/* Progress header */}
@@ -340,8 +360,11 @@ const mcqExplanation = current.back || current.explanation || ''
                     ↩ Deshacer
                   </button>
                 )}
-                <span style={{ fontSize: 13, color: 'var(--success)' }}>✅ {results.correct}</span>
-                <span style={{ fontSize: 13, color: 'var(--danger)' }}>❌ {results.wrong}</span>
+                {combo >= 3 && (
+                  <span className="combo-badge" key={combo}>🔥 x{combo}</span>
+                )}
+                <span style={{ fontSize: 13, color: 'var(--success-dark)', fontWeight: 800 }}>✅ {results.correct}</span>
+                <span style={{ fontSize: 13, color: 'var(--danger)', fontWeight: 800 }}>❌ {results.wrong}</span>
               </div>
             </div>
             <div className="progress-bar">
@@ -371,7 +394,7 @@ const mcqExplanation = current.back || current.explanation || ''
                 {current.options.map((opt, i) => {
                   const isSelected = selectedOption === i
                   const isCorrect = i === current.correctIndex
-                  let bg = 'rgba(255,255,255,0.04)'
+                  let bg = 'var(--fill)'
                   let border = 'var(--border)'
                   let color = 'var(--text)'
                   if (mcqResult) {
@@ -459,7 +482,7 @@ const mcqExplanation = current.back || current.explanation || ''
           {/* Kuma feedback bubble */}
           {revealed && (
             <div className="kai-bubble animate-fade" style={{ marginBottom: 16 }}>
-              <span className="kai-avatar">🐶</span>
+              <KumaAvatar user={user} />
               <div className="kai-text">
                 {loadingFeedback ? (
                   <span style={{ opacity: 0.6, animation: 'pulse 1.5s infinite' }}>Kuma está pensando...</span>
@@ -702,6 +725,26 @@ const mcqExplanation = current.back || current.explanation || ''
 
         </div>
       </div>
+
+      {/* Duolingo-style feedback banner */}
+      {feedbackBanner && (
+        <div className={`feedback-banner ${feedbackBanner.kind}`}>
+          <div className="feedback-banner-inner">
+            <span style={{ fontSize: 26 }}>{feedbackBanner.icon}</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 15 }}>{feedbackBanner.kind === 'correct' ? '¡Correcto!' : 'Incorrecto'}</div>
+              {feedbackBanner.text !== '¡Correcto!' && (
+                <div style={{ fontSize: 12, fontWeight: 700, opacity: 0.85, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {feedbackBanner.text}
+                </div>
+              )}
+            </div>
+            {combo >= 3 && feedbackBanner.kind === 'correct' && (
+              <span className="combo-badge">🔥 x{combo}</span>
+            )}
+          </div>
+        </div>
+      )}
     </>
   )
 }

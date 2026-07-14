@@ -1,4 +1,5 @@
 import { getLevel } from '../services/levels'
+import KumaAvatar from './KumaAvatar'
 
 const CONFETTI_PIECES = [
   { color: '#8b5cf6', left: '10%', delay: '0s',   duration: '1.1s' },
@@ -182,7 +183,7 @@ export default function SessionComplete({ results, user, authUser, onDone, onSho
               </span>
             )}
           </div>
-          <div style={{ height: 6, background: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' }}>
+          <div style={{ height: 6, background: 'var(--fill-strong)', borderRadius: 3, overflow: 'hidden' }}>
             <div
               style={{
                 height: '100%',
@@ -225,7 +226,7 @@ export default function SessionComplete({ results, user, authUser, onDone, onSho
 
         {/* Kuma message */}
         <div className="kai-bubble" style={{ marginBottom: 24, textAlign: 'left' }}>
-          <span className="kai-avatar">🐶</span>
+          <KumaAvatar user={user} />
           <div className="kai-text">{getMessage()}</div>
         </div>
 

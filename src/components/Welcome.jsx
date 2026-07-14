@@ -59,7 +59,7 @@ export default function Welcome({ onSetupComplete, onTryExample }) {
               maxLength={30}
               autoFocus
               style={{
-                background: 'rgba(255,255,255,0.05)',
+                background: 'var(--fill)',
                 border: `1.5px solid ${focused ? 'var(--primary)' : 'var(--border)'}`,
                 borderRadius: 12,
                 padding: '12px 16px',
@@ -112,7 +112,7 @@ export default function Welcome({ onSetupComplete, onTryExample }) {
             { icon: '🔥', text: 'Rachas diarias que mantienen el hábito de estudio' },
             { icon: '🐶', text: 'Kuma, tu tutora IA shiba inu disponible 24/7 sin juicios' },
           ].map(({ icon, text }) => (
-            <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'rgba(255,255,255,0.02)', borderRadius: 10, border: '1px solid var(--border)' }}>
+            <div key={text} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: 'var(--fill-soft)', borderRadius: 10, border: '1px solid var(--border)' }}>
               <span style={{ fontSize: 16, flexShrink: 0 }}>{icon}</span>
               <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{text}</span>
             </div>

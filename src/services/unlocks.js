@@ -12,6 +12,15 @@ export const UNLOCK_REGISTRY = [
   { id: 'badge_leyenda',  level: 9, type: 'badge',     name: 'Insignia Leyenda',  emoji: '⭐', description: 'Tu dedicación es una inspiración para los demás.' },
 ]
 
+// Highest-level unlocked Kuma skin — worn as a small accessory on the avatar.
+// Returns the skin entry or null if the user hasn't unlocked any skin yet.
+export function getEquippedSkin(user) {
+  const owned = new Set(user?.unlockedIds ?? [])
+  const skins = UNLOCK_REGISTRY.filter(u => u.type === 'kuma_skin' && owned.has(u.id))
+  if (skins.length === 0) return null
+  return skins.reduce((best, s) => (s.level > best.level ? s : best))
+}
+
 export function getUnlocksForLevel(level) {
   return UNLOCK_REGISTRY.filter(u => u.level === level)
 }
