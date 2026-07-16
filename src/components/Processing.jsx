@@ -86,6 +86,10 @@ export default function Processing({ source, onComplete, onError, onPaywall }) {
     const reader = res.body.getReader()
     const decoder = new TextDecoder()
     let buffer = ''
+    // Track whether the server sent a terminal event (done/error). If the
+    // stream closes without one — e.g. the serverless function hit its time
+    // limit mid-generation — we must surface a retry instead of hanging.
+    let settled = false
 
     try {
       while (true) {
@@ -110,6 +114,7 @@ export default function Processing({ source, onComplete, onError, onPaywall }) {
             setMsgIndex(idx)
 
           } else if (payload.type === 'done') {
+            settled = true
             if (!payload.cards?.length) {
               setError('No se generaron tarjetas válidas. Probá con un texto diferente.')
               return
@@ -125,14 +130,24 @@ export default function Processing({ source, onComplete, onError, onPaywall }) {
               cards,
             }
             onComplete(deck)
+            return
 
           } else if (payload.type === 'error') {
+            settled = true
             setError(payload.message || 'Ocurrió un error inesperado — volvé a intentarlo.')
+            return
           }
         }
       }
     } catch {
       setError('Ocurrió un error inesperado — volvé a intentarlo.')
+      return
+    }
+
+    // Stream ended without a done/error event — almost always a timeout on
+    // very long material. Don't leave Kuma spinning forever.
+    if (!settled) {
+      setError('La generación tardó demasiado con este material. Probá con menos texto de una vez, o con menos tarjetas, y reintentá.')
     }
   }
 
