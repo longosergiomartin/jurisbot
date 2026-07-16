@@ -4,7 +4,10 @@ import { getAuthUser, supabaseAdmin } from './_supabase.js'
 export const config = { maxDuration: 60 }
 
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-const CHUNK_SIZE = 2800
+// Larger chunks = fewer sequential Claude calls, so long material finishes
+// inside Vercel's function time limit. Sonnet handles ~12k chars per call
+// comfortably; a typical chapter now fits in 1-2 calls instead of ~7.
+const CHUNK_SIZE = 12000
 const MAX_TEXT_CHARS = 50000
 
 const SIMPLIFIED_INSTRUCTION = `
@@ -253,6 +256,9 @@ export default async function handler(req, res) {
         const chunkCards = await callClaude(content)
         allCards.push(...chunkCards)
         send({ type: 'progress', chunk: i + 1, total: chunks.length, cards: allCards.length })
+        // Stop early once we've gathered enough — no point spending more
+        // sequential API calls (and risking a timeout) on later chunks.
+        if (allCards.length >= count) break
       }
 
       allCards = allCards.slice(0, count)
